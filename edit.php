@@ -519,7 +519,7 @@ $(function () {
         searching: true,
         ordering: true,
         info: true,
-        autoWidth: true,
+        autoWidth: false,
         processing: false,
         serverSide: false,
         responsive: true,        
@@ -528,8 +528,14 @@ $(function () {
             return value;
         } ),
         columns: [
-            { data: "name" },
-            { data: "value" }
+        	{ 
+                data: "name",
+              	width: "20%"
+            },
+            { 
+    			data: "value",
+    			width: "80%"
+    	    }
         ],
         buttons: [
         	{ extend: "create", editor: metas_editor },
@@ -635,7 +641,7 @@ $(function () {
         searching: true,
         ordering: true,
         info: true,
-        autoWidth: true,
+        autoWidth: false,
         processing: false,
         serverSide: false,
         responsive: true,        
@@ -644,8 +650,23 @@ $(function () {
             return value;
         } ),
         columns: [
-            { data: "name" },
-            { data: "value" }
+            { 
+                data: "name",
+              	width: "20%"
+            },
+            { 
+    			data: "value",
+    			width: "80%",
+    			render: function (data, type, row) 
+    	    	{
+    				return "<code>" + data
+    		         .replace(/&/g, "&amp;")
+    		         .replace(/</g, "&lt;")
+    		         .replace(/>/g, "&gt;")
+    		         .replace(/"/g, "&quot;")
+    		         .replace(/'/g, "&#039;") + "</code>";
+    	        }
+    	    }
         ],
         buttons: [
         	{ extend: "create", editor: strings_editor },

@@ -419,14 +419,20 @@ $(function () {
         searching: true,
         ordering: true,
         info: true,
-        autoWidth: true,
+        autoWidth: false,
         processing: false,
         serverSide: false,
         responsive: true,        
         select: true,
         columns: [
-            { data: "name" },
-            { data: "value" }
+        	{ 
+                data: "name",
+              	width: "20%"
+            },
+            { 
+    			data: "value",
+    			width: "80%"
+    	    }
         ]
     });	
 
@@ -444,14 +450,29 @@ $(function () {
         searching: true,
         ordering: true,
         info: true,
-        autoWidth: true,
+        autoWidth: false,
         processing: false,
         serverSide: false,
         responsive: true,        
         select: true,
         columns: [
-            { data: "name" },
-            { data: "value" }
+        	{ 
+                data: "name",
+              	width: "20%"
+            },
+            { 
+    			data: "value",
+    			width: "80%",
+    			render: function (data, type, row) 
+    	    	{
+    				return "<code>" + data
+    		         .replace(/&/g, "&amp;")
+    		         .replace(/</g, "&lt;")
+    		         .replace(/>/g, "&gt;")
+    		         .replace(/"/g, "&quot;")
+    		         .replace(/'/g, "&#039;") + "</code>";
+    	        }
+    	    }
         ]
     });	
 

@@ -257,7 +257,7 @@ class YEdCore
 	{
 		$id = $this->database->CreateRule($rule_content);
 		
-		$this->database->CreateRuleMeta($id, "__author", $rule_content->author);
+		$this->database->CreateRuleMeta($id, "__author", $rule_content->author_id);
 		$this->database->CreateRuleMeta($id, "__comment", $rule_content->comment);
 		$this->database->CreateRuleMeta($id, "__threat", $rule_content->threat);
 		
@@ -283,7 +283,7 @@ class YEdCore
 	{
 		$success = $this->database->UpdateRule($rule_id, $rule_content);	
 		
-		$this->database->UpdateRuleMeta($rule_id, "__author", $rule_content->author);
+		$this->database->UpdateRuleMeta($rule_id, "__author", $rule_content->author_id);
 		$this->database->UpdateRuleMeta($rule_id, "__comment", $rule_content->comment);
 		$this->database->UpdateRuleMeta($rule_id, "__threat", $rule_content->threat);
 		

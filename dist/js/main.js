@@ -289,7 +289,8 @@ function serializeRuleInput() {
 	serialized.comment = $("textarea#comment").val();
 	
 	// Author
-	serialized.author = $("input#author").attr( 'name' );
+	serialized.author_id = $("input#author").attr( 'name' );
+	serialized.author 	 = $("input#author").val();
 	
 	// Tags
 	serialized.tags = $(".tm-input").tagsManager('tags');
@@ -374,8 +375,21 @@ function refreshRulePreview() {
 		
 	// Regular metas
 	input.metas.forEach( function (d) {
+		var low_value 	= d.value.toLowerCase();
+		var value 		= d.value;
+		if (low_value == "true" || low_value == "false") {
+			// Boolean, nothing to do.
+		}
+		else if(!isNaN(parseInt(low_value))) {
+			// Int, nothing to do
+		}
+		else {
+			// String, needs quotes
+			value = "\"" + d.value + "\"";
+		}
+		
 		default_content = default_content 
-			+ "    " + d.name + " = " + d.value + "\n";
+			+ "    " + d.name + " = " + value + "\n";
 	} );		
 		
 	//==================================================
