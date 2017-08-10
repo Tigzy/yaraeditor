@@ -5,6 +5,7 @@ require_once(__DIR__.'/src/lib/restlib.php');
 require_once(__DIR__."/src/lib/usercake/init.php");
 
 $user = null;
+$key  = null;
 
 class Rest_Api extends Rest_Rest {
 	public function __construct(){
@@ -14,6 +15,7 @@ class Rest_Api extends Rest_Rest {
 	public function processApi()
 	{		
 		global $user;
+		global $key;
 		$current_user = UCUser::getCurrentUser();
 		
 		// Extract requested API
@@ -33,15 +35,12 @@ class Rest_Api extends Rest_Rest {
 			if (!isset($key) && isset($_POST['token'])) 	$key = $_POST['token'];	
 		}
 					
-		// Verify API key/ Save user id
-		if (!isset($key)) $this->response('',401);
-		$is_api_valid 	= UCUser::ValidateAPIKey($key); 
-		$user 			= new UCUser(UCUser::GetByAPIKey($key));	
+		// Save user id		
+		$user = new UCUser(UCUser::GetByAPIKey($key));	
 				
-		// Go to selected route
-		if (!$is_api_valid)											$this->response('',401);		
-		else if((int)method_exists($this,$func) > 0)				$this->$func();
-		else														$this->unknown($func);
+		// Go to selected route			
+		if((int)method_exists($this,$func) > 0)				$this->$func();
+		else												$this->unknown($func);
 	}
 	
 	private function getCore() {
@@ -54,6 +53,14 @@ class Rest_Api extends Rest_Rest {
 		if (!$value && isset($_POST[$key])) $value = $_POST[$key];  // Search in post
 		if (!$value && isset($_SERVER[$key_as_header])) $value = $_SERVER[$key_as_header]; // Search in headers
 		return $value;
+	}
+
+	private function validateKey() {
+		global $key;
+		
+		if (!isset($key)) $this->response('',401);
+		$is_api_valid = UCUser::ValidateAPIKey($key); 
+		if (!$is_api_valid) $this->response('',401);	
 	}
 	
 	//===========================================================================
@@ -72,6 +79,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function getfilestable() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
 		
 		$folder 			= -1;
@@ -104,6 +112,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function getfile() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
 		
 		$file_id = $this->getParameter("id");
@@ -116,6 +125,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function exportfile()
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
 		
 		$file_id = $this->getParameter("id");
@@ -132,6 +142,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function getrules() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
 		
 		$file 				= -1;
@@ -164,7 +175,9 @@ class Rest_Api extends Rest_Rest {
 			$this->response("unable to find the rule",404);
 	}
 	
-	public function updaterule() {
+	public function updaterule() 
+	{
+		$this->validateKey();
 		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
 		$core = $this->getCore();
 		
@@ -219,6 +232,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function deletefile() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
 		
 		$file_id = $this->getParameter("id");
@@ -236,6 +250,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function copyfile() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
 		
 		$file_id = $this->getParameter("id");
@@ -258,6 +273,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function addfile() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
 		
 		$file_name = $this->getParameter("name");
@@ -281,6 +297,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function updatefile() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
 		
 		$file_id = $this->getParameter("id");
@@ -306,6 +323,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function deleterule() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
 		
 		$rule_id = $this->getParameter("id");
@@ -323,6 +341,7 @@ class Rest_Api extends Rest_Rest {
 	
 	public function copyrule() 
 	{
+		$this->validateKey();
 		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
 		
 		$rule_id = $this->getParameter("id");
