@@ -2,7 +2,7 @@ yaraeditor-web
 ============
 
 Malware Repository Framework
-Official page: http://www.adlice.com/download/mrf/
+Official page: http://www.adlice.com/download/yaraeditorweb/
 
 ## Version 0.1
 Initial release  
