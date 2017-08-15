@@ -222,6 +222,7 @@ class Rest_Api extends Rest_Rest {
 		if (!isset($rule_content->condition)) {$this->response('condition not set',400); return false; }
 		
 		// Sanity check, #2 check for mandatory fields
+		if (empty($rule_content->file_id)) {$this->response('file cannot be empty',400); return false; }
 		if ($rule_content->name == "") {$this->response('rulename cannot be empty',400); return false; }
 		if (empty($rule_content->strings)) {$this->response('strings cannot be empty',400); return false; }
 		if ($rule_content->condition == "") {$this->response('condition cannot be empty',400); return false; }
