@@ -52,17 +52,6 @@ scratch. This page gets rid of all links and provides the needed markup only.
   	body .modal-dialog {
 	    width: 60%;
 	}
-	
-	.tab-content {
-	    border-left: 1px solid #ddd;
-	    border-right: 1px solid #ddd;
-	    border-bottom: 1px solid #ddd;
-	    padding: 10px;
-	}
-	
-	.nav-tabs {
-	    margin-bottom: 0;
-	}
   </style>
   
 </head>
@@ -141,6 +130,18 @@ desired effect
 	            <div class="modal-header">
 	            </div>
 	            <div class="modal-body">
+	              <form class="form-horizontal" role="form">
+			        <fieldset>
+			          <!-- Text input-->
+			          <div id="confirm-file-name" class="form-group">
+			            <label class="col-sm-1 control-label" for="textinput">File name</label>
+			            <div class="col-sm-10">
+			              <input type="text" id="new-file-name" placeholder="MyFile" class="form-control">
+			            </div>
+			          </div>	
+			          <span id="modal-message"></span>			          			
+			        </fieldset>		        
+			      </form>	
 	            </div>
 	            <div class="modal-footer">
 	                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
@@ -260,15 +261,19 @@ desired effect
 
   function file_copy(id)
   {
+	  var file_name = $('#confirm-action').find('#new-file-name').val();	  
+	  
 	  Pace.start();
-	  copy_file(id, 
+	  copy_file(id, file_name,
 		function(data, code) {		
-		    $('#confirm-action').modal('hide');	
+		    $('#confirm-action').modal('hide');			    		    
 
-		    var file_name 	= data.name;
+		    if (file_name == "") {
+				file_name = data.name;
+			}
+
 			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> File ' + file_name + ' created.</div>');
-			
-		    
+					    
 			Pace.stop();
 			refresh_files();
 		},
@@ -346,16 +351,20 @@ desired effect
 
   function confirm_file_copy(id)
   {
+	  $('#confirm-action').find('#confirm-file-name').show();
+	  $('#confirm-action').find('#new-file-name').val("");	
 	  $('#confirm-action').find('.modal-header').html("File copy");
-	  $('#confirm-action').find('.modal-body').html("This will copy the file and ALL THE RULES inside, do you want to proceed?");	  
+	  $('#confirm-action').find('#modal-message').html("This will copy the file and ALL THE RULES inside, do you want to proceed?");	  
 	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'file_copy(' + id + ')');
 	  $('#confirm-action').modal('show');
   }
 		  
   function confirm_file_delete(id)
   {
+	  $('#confirm-action').find('#confirm-file-name').hide();
+	  $('#confirm-action').find('#new-file-name').val("");	
 	  $('#confirm-action').find('.modal-header').html("File removal");
-	  $('#confirm-action').find('.modal-body').html("This will remove the file and ALL THE RULES inside, do you want to proceed?");	  
+	  $('#confirm-action').find('#modal-message').html("This will remove the file and ALL THE RULES inside, do you want to proceed?");	  
 	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'file_delete(' + id + ')');
 	  $('#confirm-action').modal('show');
   }

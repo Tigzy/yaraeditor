@@ -180,6 +180,16 @@ class YEdDatabase
 		return $success;
 	}
 	
+	public function RenameFile($file_id, $file_name) 
+	{
+		$stmt = $this->mysqli->prepare("UPDATE virtual_file SET name=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("si", $file_name, $file_id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
 	public function MarkFileAsUpdated($file_id) 
 	{
 		$stmt = $this->mysqli->prepare("UPDATE virtual_file SET modified=NOW() WHERE id=?");
@@ -336,7 +346,6 @@ class YEdDatabase
 	
 	public function MoveRule($rule_id, $file_id) 
 	{
-		$tags = implode(",", $rule_content->tags);		
 		$stmt = $this->mysqli->prepare("UPDATE rule SET file_id=?, modified=NOW() WHERE id=?");
 		$stmt->bind_param("ii", $file_id, $rule_id);
 		$stmt->execute();
@@ -508,6 +517,70 @@ class YEdDatabase
 		$stmt->execute();
 		$stmt->close();
 		return true;
+	}
+	
+	//=========================================================
+	
+	public function GetTags() 
+	{
+		$stmt = $this->mysqli->prepare("SELECT tags FROM rule WHERE tags <> ''");
+		$stmt->execute();
+		$stmt->bind_result($tags);
+		$results = array();
+		while ($stmt->fetch()) {
+			$tags_exploded = array_filter(explode(",", $tags));	
+			$results = array_merge($results, $tags_exploded);
+		}
+		$results = array_count_values($results);
+		$stmt->close();	
+		return $results;
+	}
+	
+	public function GetSubmissionsPerUser() 
+	{
+		$stmt = $this->mysqli->prepare("SELECT value as uploader, COUNT(*) FROM `rule_metas` WHERE name = '__author' and value <> '' GROUP BY value");
+		$stmt->execute();
+		$stmt->bind_result($uploader, $count);
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array('uploader' => $uploader, 'count' => $count);
+		}
+		$stmt->close();	
+		return $results;
+	}
+	
+	public function GetFilesCount() 
+	{
+		$stmt = $this->mysqli->prepare("SELECT count(*) as count FROM virtual_file");
+		$stmt->execute();
+		$stmt->bind_result($count);
+		$stmt->fetch();
+		$stmt->close();		
+		return (int) $count;
+	}
+	
+	public function GetTotalRulesCount() 
+	{
+		$stmt = $this->mysqli->prepare("SELECT count(*) as count FROM rule");
+		$stmt->execute();
+		$stmt->bind_result($count);
+		$stmt->fetch();
+		$stmt->close();		
+		return (int) $count;
+	}
+	
+	public function GetSubmissions($days_count = -1) 
+	{
+		$stmt = $this->mysqli->prepare("SELECT DATE(created) as date, count(*) as count FROM rule" 
+				. ($days_count == -1 ? "" : " WHERE DATE(created) > DATE_SUB(NOW(), INTERVAL " . strval($days_count) . " DAY) ") . " GROUP BY DATE(created) ORDER BY date ASC");
+		$stmt->execute();
+		$stmt->bind_result($date, $count);
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array('date' => $date, 'count' => $count);
+		}
+		$stmt->close();	
+		return $results;
 	}
 	
 	public function Create()

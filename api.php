@@ -135,7 +135,24 @@ class Rest_Api extends Rest_Rest {
 		$core 		= $this->getCore();	
 		$results 	= $core->ExportFile($file_id);
 		if (!$results) {
-			$this->response("unable to create export",403);
+			$this->response("unable to export file",403);
+			return false;
+		}
+	}
+	
+	public function exportrule()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$rule_id = $this->getParameter("id");
+		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }	
+		
+		// Get results
+		$core 		= $this->getCore();	
+		$results 	= $core->ExportRule($rule_id);
+		if (!$results) {
+			$this->response("unable to export rule",403);
 			return false;
 		}
 	}
@@ -255,9 +272,11 @@ class Rest_Api extends Rest_Rest {
 		
 		$file_id = $this->getParameter("id");
 		if (is_null($file_id)) {$this->response('missing id parameter',400); return false; }
+		$file_name = $this->getParameter("name");
+		if (is_null($file_name)) $file_name = "";
 		
 		$core 		= $this->getCore();		
-		$new_name 	= "";
+		$new_name 	= $file_name;
 		$id 		= $core->CopyFile($file_id, $new_name);
 		if ($id == 0) {
 			$this->response('Unable to copy file',406); 
@@ -346,9 +365,11 @@ class Rest_Api extends Rest_Rest {
 		
 		$rule_id = $this->getParameter("id");
 		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }
+		$rule_name = $this->getParameter("name");
+		if (is_null($rule_name)) $rule_name = "";
 		
 		$core 		= $this->getCore();		
-		$new_name 	= "";
+		$new_name 	= $rule_name;
 		$id 		= $core->CopyRule($rule_id, $new_name);
 		if ($id == 0) {
 			$this->response('Unable to copy rule',406); 
@@ -360,6 +381,55 @@ class Rest_Api extends Rest_Rest {
 		$data->name = $new_name;
 		
 		$this->response(json_encode($data),201);
+	}
+	
+	public function getstorageinfo() {
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }
+		$core 		= $this->getCore();
+		$results 	= $core->GetStorageInfo();
+		echo json_encode($results);
+	}
+	
+	public function getsubmissionsperuserdata() {	
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$core 			= $this->getCore();
+		$data 			= $core->GetSubmissionsPerUser();	
+		echo json_encode($data);
+	}
+	
+	public function gettagsdata() {	
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$core 			= $this->getCore();
+		$data 			= $core->GetTags();	
+		echo json_encode($data);
+	}
+	
+	public function getsubmissionsdata() {
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$days_count 	= -1;
+		$days_count_val = $this->getParameter("days_count");		
+		if ($days_count_val) $days_count = $days_count_val;
+		
+		$core 			= $this->getCore();
+		$data 			= $core->GetSubmissions($days_count);	
+		$labels 		= array();
+		$points 		= array();							
+		foreach($data as $val)
+		{
+		    $labels[] = $val["date"];
+		    $points[] = $val["count"];
+		}				
+		$data_new = new stdClass();
+		$data_new->labels 			= $labels;
+		$data_new->points 			= $points;
+		echo json_encode($data_new);
 	}
 }
 

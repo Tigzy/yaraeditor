@@ -64,17 +64,6 @@ scratch. This page gets rid of all links and provides the needed markup only.
   	body .modal-dialog {
 	    width: 60%;
 	}
-	
-	.tab-content {
-	    border-left: 1px solid #ddd;
-	    border-right: 1px solid #ddd;
-	    border-bottom: 1px solid #ddd;
-	    padding: 10px;
-	}
-	
-	.nav-tabs {
-	    margin-bottom: 0;
-	}
   </style>
   
 </head>
@@ -131,6 +120,9 @@ desired effect
             <div class="btn-group pull-right" style="padding-right: 10px">
 				<button id="save-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Save file' OnClick="file_update(<?php echo $file_id ?>)"><span class="fa fa-save"></span></button>
 			</div>	
+            <div class="btn-group pull-right" style="padding-right: 10px">
+				<button id="export-button" class="btn btn-primary jsbtn" data-toggle='tooltip' title='Export file' OnClick="file_export(<?php echo $file_id ?>)"><span class="fa fa-download"></span></button>
+			</div>				
           </div>             
           <div class="box-body">            
           	<div class="row">			   
@@ -204,6 +196,18 @@ desired effect
 	            <div class="modal-header">
 	            </div>
 	            <div class="modal-body">
+	              <form class="form-horizontal" role="form">
+			        <fieldset>
+			          <!-- Text input-->
+			          <div id="confirm-file-name" class="form-group">
+			            <label class="col-sm-1 control-label" for="textinput">Rule name</label>
+			            <div class="col-sm-10">
+			              <input type="text" id="new-file-name" placeholder="MyRule" class="form-control">
+			            </div>
+			          </div>	
+			          <span id="modal-message"></span>			          			
+			        </fieldset>		        
+			      </form>
 	            </div>
 	            <div class="modal-footer">
 	                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
@@ -286,6 +290,19 @@ desired effect
 	  );
   }
 
+  function file_export(id)
+  {
+	  Pace.start();
+	  export_file( id,
+		function(data, code) {		
+		  	Pace.stop();
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to export file</div>');
+		}		
+	  );
+  }
+  
   function rule_delete(id)
   {
 	  Pace.start();
@@ -306,12 +323,16 @@ desired effect
 
   function rule_copy(id)
   {
+	  var rule_name = $('#confirm-action').find('#new-file-name').val();
+	  
 	  Pace.start();
-	  copy_rule(id, 
+	  copy_rule(id, rule_name,
 		function(data, code) {		
 		    $('#confirm-action').modal('hide');	
 
-		    var rule_name 	= data.name;
+		    if (rule_name == "") {
+		    	rule_name = data.name;
+			}
 			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rule ' + rule_name + ' created.</div>');
 					    
 			Pace.stop();
@@ -355,6 +376,19 @@ desired effect
 	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + id);
   }
 
+  function rule_export(id)
+  {
+	  Pace.start();
+	  export_rule( id,
+		function(data, code) {		
+		  	Pace.stop();
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to export rule</div>');
+		}		
+	  );
+  }
+
   function rule_add()
   {
 	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>edit.php?file_id=" + <?php echo $file_id ?>);
@@ -367,16 +401,20 @@ desired effect
 
   function confirm_rule_copy(id)
   {
+	  $('#confirm-action').find('#confirm-file-name').show();
+	  $('#confirm-action').find('#new-file-name').val("");	
 	  $('#confirm-action').find('.modal-header').html("Rule copy");
-	  $('#confirm-action').find('.modal-body').html("This will copy the rule, do you want to proceed?");	  
+	  $('#confirm-action').find('#modal-message').html("This will copy the rule, do you want to proceed?");	  
 	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'rule_copy(' + id + ')');
 	  $('#confirm-action').modal('show');
   }
 		  
   function confirm_rule_delete(id)
   {
+	  $('#confirm-action').find('#confirm-file-name').hide();
+	  $('#confirm-action').find('#new-file-name').val("");	
 	  $('#confirm-action').find('.modal-header').html("Rule removal");
-	  $('#confirm-action').find('.modal-body').html("This will remove the rule, do you want to proceed?");	  
+	  $('#confirm-action').find('#modal-message').html("This will remove the rule, do you want to proceed?");	  
 	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'rule_delete(' + id + ')');
 	  $('#confirm-action').modal('show');
   }
@@ -462,6 +500,9 @@ desired effect
 	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='View rule' OnClick='rule_open(" + row.id + ")'>"
 	    		+ "<span class='fa fa-eye table-menu'></span>"
 	    		+ "</button> "	
+	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='Export file' OnClick='rule_export(" + row.id + ")'>"
+	    		+ "<span class='fa fa-download table-menu'></span>"
+	    		+ "</button> "
 	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Edit rule' OnClick='rule_update(" + row.id + ")'>"
 	    		+ "<span class='fa fa-pencil table-menu'></span>"
 	    		+ "</button> "

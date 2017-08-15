@@ -2,10 +2,64 @@
 //================================================
 // Ajax calls
 
+function get_storage_info(onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=getstorageinfo',
+		dataType: 'json',
+		type: 'get',				
+		success: function(data) { 
+			if (onSuccess) onSuccess(data); 				
+		},
+		error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure();             
+        }
+	});
+}
+
+function get_uploadersdata(onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=getsubmissionsperuserdata',
+		dataType: 'json',
+		data: {},	
+		type: 'get',				
+		success: function(data) { 
+			if (onSuccess) onSuccess(data); 				
+		},
+		error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure();             
+        }
+	});
+}
+
+function get_tagsdata(onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=gettagsdata',
+		dataType: 'json',
+		data: {},	
+		type: 'get',				
+		success: function(data) { 
+			if (onSuccess) onSuccess(data); 				
+		},
+		error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure();             
+        }
+	});
+}
+
 function export_file(file_id, onSuccess, onFailure)
 {
 	// Ajax isn't able to trigger downloads
 	window.location.assign('api.php?action=exportfile&id=' + file_id);
+	onSuccess();
+}
+
+function export_rule(rule_id, onSuccess, onFailure)
+{
+	// Ajax isn't able to trigger downloads
+	window.location.assign('api.php?action=exportrule&id=' + rule_id);
 	onSuccess();
 }
 
@@ -57,12 +111,12 @@ function delete_rule(rule_id, onSuccess, onFailure)
 	});
 }
 
-function copy_rule(rule_id, onSuccess, onFailure)
+function copy_rule(rule_id, rule_name, onSuccess, onFailure)
 {
 	return $.ajax({
 		url: 'api.php?action=copyrule',
 		dataType: 'json',	
-		data: {id: rule_id},	
+		data: {id: rule_id, name: rule_name},	
 		type: 'post',
 		success: function(data, textStatus, xhr) { 
 			if (onSuccess) onSuccess(data, xhr.status); 		
@@ -120,12 +174,12 @@ function delete_file(file_id, onSuccess, onFailure)
 	});
 }
 
-function copy_file(file_id, onSuccess, onFailure)
+function copy_file(file_id, file_name, onSuccess, onFailure)
 {
 	return $.ajax({
 		url: 'api.php?action=copyfile',
 		dataType: 'json',	
-		data: {id: file_id},	
+		data: {id: file_id, name: file_name},	
 		type: 'post',
 		success: function(data, textStatus, xhr) { 
 			if (onSuccess) onSuccess(data, xhr.status); 		

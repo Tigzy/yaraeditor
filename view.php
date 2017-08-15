@@ -179,7 +179,10 @@ desired effect
 						</div>
 						<div class="btn-group pull-right" style="padding-right: 10px">
 							<button id="edit-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Edit rule' OnClick="rule_update(<?php echo $rule_id ?>)"><span class="fa fa-pencil"></button>
-						</div>					
+						</div>	
+						<div class="btn-group pull-right" style="padding-right: 10px">
+							<button id="export-button" class="btn btn-primary jsbtn" data-toggle='tooltip' title='Export rule' OnClick="rule_export(<?php echo $rule_id ?>)"><span class="fa fa-download"></span></button>
+						</div>				
 			        </div>
 			    </section>				
 			</div>
@@ -371,6 +374,19 @@ desired effect
 function rule_update(id)
 {
 	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>edit.php?id=" + id, "_self");
+}
+
+function rule_export(id)
+{
+	  Pace.start();
+	  export_rule( id,
+		function(data, code) {		
+		  	Pace.stop();
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to export rule</div>');
+		}		
+	  );
 }
 
 $(function () {

@@ -3,6 +3,7 @@
 require_once(__DIR__.'/config.php');
 require_once(__DIR__.'/modules.php');
 require_once(__DIR__.'/database.php');
+require_once(__DIR__.'/utils.php');
 require_once(__DIR__.'/lib/usercake/user.php');
 
 // This class stores everything needed for MRF to work
@@ -77,6 +78,28 @@ class YEdCore
         return True;
 	}
 	
+	public function ExportRule($rule_id)
+	{
+		// Generate file
+		$file_path	= tempnam(sys_get_temp_dir(), 'yed');
+		$file_name 	= basename($file_path);
+		$content 	= $this->GetRuleExport($rule_id, $file_name);
+		$file 		= fopen($file_path, 'w');
+		if (!$file) { return false; }
+		
+		fwrite($file, $content);
+		fclose($file);		
+		
+		// Generate headers
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Type: text/plain');
+        header('Content-Disposition: attachment; filename="'.$file_name.'"');
+        header('Content-Length: '.filesize($file_path));
+        header('Last-Modified: '.gmdate('D, d M Y H:i:s T', filemtime($file_path)));
+        readfile($file_path);
+        return True;
+	}
+	
 	public function GetFileExport($file_id, &$file_name)
 	{
 		$content = "";
@@ -95,16 +118,18 @@ class YEdCore
 		$rules = $this->GetRules($file_id);		
 		foreach($rules as $rule)
 		{
-			$content .= $this->GetRuleExport($rule["id"]) . "\n";
+			$dummy 	  = "";
+			$content .= $this->GetRuleExport($rule["id"], $dummy) . "\n";
 		}
 		
 		return $content;
 	}
 	
-	public function GetRuleExport($rule_id)
+	public function GetRuleExport($rule_id, &$file_name)
 	{
 		$content 	= "";		
 		$rule 		= $this->GetRule($rule_id);	
+		$file_name  = $rule["name"] . ".yar";
 		
 		// comment
 		if (!empty($rule["comment"])) {
@@ -208,11 +233,13 @@ class YEdCore
 			}
 			
 			// Change name
-			$new_name 	= $file["name"];
+			if (empty($new_name)) {
+				$new_name = $file["name"];
+			}
 			while ($this->database->FileExists($new_name)) {
 				$new_name = $new_name . " (copy)";
 			}
-			$this->database->UpdateFile($id, $new_name);			
+			$this->database->RenameFile($id, $new_name);			
 		}
 		return $id;
 	}
@@ -368,7 +395,9 @@ class YEdCore
 			$this->database->CopyRuleMetas($rule_id, $id);
 			
 			// Change name
-			$new_name 	= $rule["name"];
+			if (empty($new_name)) {
+				$new_name = $rule["name"];
+			}
 			while ($this->database->RuleExists($new_name)) {
 				$new_name = $new_name . " (copy)";
 			}
@@ -394,6 +423,45 @@ class YEdCore
 	public function MoveRule($rule_id, $file_id)
 	{
 		return $this->database->MoveRule($rule_id, $file_id);
+	}
+	
+	//====================================================
+	
+	public function GetStorageInfo() 
+	{
+	   	$obj = new stdClass();
+		$obj->files 	= $this->database->GetFilesCount();
+		$obj->rules 	= $this->database->GetTotalRulesCount();	
+		return $obj;
+    } 
+	
+	public function GetSubmissionsPerUser()	
+	{
+		$data = $this->database->GetSubmissionsPerUser();
+		foreach ($data as &$uploader_data)
+		{
+			 $uploader_data["avatar"] 	= "";
+			 $uploader_data["name"] 	= "Unknown";
+			
+			 // Fetch user data
+		     $user_obj = new UCUser($uploader_data['uploader']);
+		     if (!$user_obj) {
+		     	continue;
+		     }
+			
+			// Get user data
+			$uploader_data["avatar"] = ResizeImage($user_obj->Avatar(), 72, 72);
+		    $uploader_data["name"]   = $user_obj->Name();
+		}	
+		return $data;
+	}
+	
+	public function GetTags()	{
+		return $this->database->GetTags();
+	}
+	
+	public function GetSubmissions($days_count)	{
+		return $this->database->GetSubmissions($days_count);
 	}
 	
 	//====================================================
