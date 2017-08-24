@@ -289,7 +289,8 @@ class YEdDatabase
 				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name",
 				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__threat')" => "threat",
 				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__author')" => "author_id"
-		));	
+		));
+		$table_rule->addGroupBy('id');
 		$table_rule->addOrderBy(new QueryOrderBy('name', 'ASC', True));		
 		
 		// Filters: Quick search can only be used alone.
