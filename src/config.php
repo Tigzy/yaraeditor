@@ -9,7 +9,7 @@
 */
  
 $config = array(
-    "version" => "0.2",
+    "version" => "0.3",
     "db" => array(
         "usercake" => array(
             "dbname" => "yed",
@@ -37,6 +37,11 @@ $config = array(
             "name" => "Create",
             "link" => "/edit.php",
             "icon" => "fa fa-pencil",
+        ),
+		array(
+            "name" => "Search",
+            "link" => "/search.php",
+            "icon" => "fa fa-search",
         ),
     	array(
             "name" => "Statistics",

@@ -239,25 +239,146 @@ class YEdDatabase
 		return (int) $count;
 	}
 	
-	public function GetRules($file_id) 
+	public function GetRules($file_id = -1, $limit = -1) 
 	{
-		$stmt = $this->mysqli->prepare("SELECT r.id, r.name, r.cond, r.is_private, r.is_global, r.tags, r.modified, r.created, 
+		$query = "SELECT r.id, r.file_id, r.name, r.cond, r.is_private, r.is_global, r.tags, r.modified, r.created, 
+				(SELECT f.name FROM virtual_file f WHERE f.id = r.file_id) as file_name,
 				(SELECT m.value FROM rule_metas m WHERE m.rule_id = r.id AND m.name = '__threat') as threat,
 				(SELECT m.value FROM rule_metas m WHERE m.rule_id = r.id AND m.name = '__author') as author
-				FROM rule r
-				WHERE r.file_id = ?");
-		$stmt->bind_param("i", $file_id);
+				FROM rule r";
+		
+		if ( $file_id != -1 && is_integer( $file_id ) ) {
+			$query = $query . " WHERE r.file_id = " . strval($file_id);
+		}
+		if ( $limit != -1 && is_integer( $file_id ) ) {
+			$query = $query . " LIMIT " . strval($limit);
+		}
+		
+		$stmt = $this->mysqli->prepare($query);
 		$stmt->execute();
-		$stmt->bind_result($id, $name, $condition, $is_private, $is_global, $tags, $modified, $created, $threat, $author_id);
+		$stmt->bind_result($id, $rule_file_id, $name, $condition, $is_private, $is_global, $tags, $modified, $created, $rule_file_name, $threat, $author_id);
 		$results = array();
 		while ($stmt->fetch()) {
 			$tags_exploded = array_filter(explode(',', $tags));	
 			$results[] = array(
-				'id' => $id, 'name' => $name, 'cond' => $condition, 'is_private' => $is_private, 'is_global' => $is_global, 
-				'tags' => $tags_exploded, 'last_modified' => $modified, 'created' => $created, 'threat' => $threat, 'author_id' => $author_id
+				'id' => $id, 'file_id' => $rule_file_id, 'name' => $name, 'cond' => $condition, 'is_private' => $is_private, 'is_global' => $is_global, 
+				'tags' => $tags_exploded, 'last_modified' => $modified, 'created' => $created, 'file_name' => $rule_file_name, 'threat' => $threat, 'author_id' => $author_id
 			);
 		}
 		$stmt->close();		
+		return $results;
+	}
+	
+	public function SearchRules($params) 
+	{
+		$queryobj = new QueryBuilder();
+		
+		$table_rule = new QueryTable('rule');
+		$table_rule->setSelect(array(
+				'id' => 'id',
+				'file_id' => 'file_id',
+				'name' => 'name',
+				'cond' => 'cond',
+				'is_private' => 'is_private',
+				'is_global' => 'is_global',
+				'tags' => 'tags',
+				'modified' => 'last_modified',
+				'created' => 'created'				
+		));
+		$table_rule->setRawSelect(array(
+				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name",
+				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__threat')" => "threat",
+				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__author')" => "author_id"
+		));	
+		$table_rule->addOrderBy(new QueryOrderBy('name', 'ASC', True));		
+		
+		// Filters: Quick search can only be used alone.
+		if ( isset($params->quick) && $params->quick != -1 ) 
+		{
+			$table_rule->setWhereCondition('OR');
+			$table_rule->addWhere(new QueryWhere('name', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str'));
+			$table_rule->addRawWhere('FIND_IN_SET("' . $this->escape_string($params->quick) . '", tags)');	
+			$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__threat") LIKE "%' . $this->escape_string($params->quick) . '%"');
+			$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__comment") LIKE "%' . $this->escape_string($params->quick) . '%"');
+			
+			$table_metas = new QueryTable('meta');	
+			$table_metas->setWhereCondition('OR');
+			$table_metas->addRawWhere('(meta.name LIKE "%' . $this->escape_string($params->quick) . '%" OR meta.value LIKE "%' . $this->escape_string($params->quick) . '%")');
+			$table_metas->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
+			$table_metas->setJoinType('LEFT');
+			$queryobj->addJoinTable($table_metas);
+						
+			$table_strings = new QueryTable('string');	
+			$table_strings->setWhereCondition('OR');
+			$table_strings->addRawWhere('(string.name LIKE "%' . $this->escape_string($params->quick) . '%" OR string.value LIKE "%' . $this->escape_string($params->quick) . '%")');
+			$table_strings->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
+			$table_strings->setJoinType('LEFT');
+			$queryobj->addJoinTable($table_strings);
+			
+			$table_rule->addWhere(new QueryWhere('cond', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str'));
+		}
+		else 
+		{
+			if ( isset($params->file) && $params->file != -1 ) {
+				$table_rule->addWhere(new QueryWhere('file_id', $this->escape_string($params->file), '=', 'int'));
+			}
+			if ( isset($params->is_private) && $params->is_private != -1 ) {
+				if ( $params->is_private == "true" )
+					$table_rule->addWhere(new QueryWhere('is_private', 0, '>', 'int'));
+				else
+					$table_rule->addWhere(new QueryWhere('is_private', 0, '=', 'int'));
+			}
+			if ( isset($params->is_global) && $params->is_global != -1 ) {
+				if ( $params->is_global == "true" )
+					$table_rule->addWhere(new QueryWhere('is_global', 0, '>', 'int'));
+				else
+					$table_rule->addWhere(new QueryWhere('is_global', 0, '=', 'int'));
+			}
+			if ( isset($params->name) && $params->name != -1 ) {
+				$table_rule->addWhere(new QueryWhere('name', '%' . $this->escape_string($params->name) . '%', 'LIKE', 'str'));
+			}
+			if ( isset($params->tags) && $params->tags != -1 ) {
+				$table_rule->addRawWhere('FIND_IN_SET("' . $this->escape_string($params->tags) . '", tags)');
+			}
+			if ( isset($params->author) && $params->author != -1 ) {
+				$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__author") = ' . $this->escape_string($params->author));
+			}	
+			if ( isset($params->threat) && $params->threat != -1 ) {
+				$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__threat") LIKE "%' . $this->escape_string($params->threat) . '%"');
+			}
+			if ( isset($params->comment) && $params->comment != -1 ) {
+				$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__comment") LIKE "%' . $this->escape_string($params->comment) . '%"');
+			}
+			if ( isset($params->metas) && $params->metas != -1 ) {
+				$table_metas = new QueryTable('meta');	
+				$table_metas->addRawWhere('(meta.name LIKE "%' . $this->escape_string($params->metas) . '%" OR meta.value LIKE "%' . $this->escape_string($params->metas) . '%")');
+				$table_metas->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
+				$table_metas->setJoinType('LEFT');
+				$queryobj->addJoinTable($table_metas);
+			}
+			if ( isset($params->strings) && $params->strings != -1 ) {
+				$table_strings = new QueryTable('string');	
+				$table_strings->addRawWhere('(string.name LIKE "%' . $this->escape_string($params->strings) . '%" OR string.value LIKE "%' . $this->escape_string($params->strings) . '%")');
+				$table_strings->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
+				$table_strings->setJoinType('LEFT');
+				$queryobj->addJoinTable($table_strings);
+			}
+			if ( isset($params->condition) && $params->condition != -1 ) {
+				$table_rule->addWhere(new QueryWhere('cond', '%' . $this->escape_string($params->condition) . '%', 'LIKE', 'str'));
+			}
+		}
+		
+		// Common filters
+		if ( isset($params->limit) && $params->limit != -1 && is_integer( $params->limit ) ) {
+			$queryobj->setLimits(0, $this->$params->limit);
+		}
+		
+		$queryobj->addTable($table_rule);
+		$results = $this->Execute($queryobj);
+		foreach($results as &$result)
+		{
+			$result["tags"] = array_filter(explode(',', $result["tags"]));
+		}
 		return $results;
 	}
 	
