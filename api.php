@@ -166,10 +166,44 @@ class Rest_Api extends Rest_Rest {
 		$file_param			= $this->getParameter('file');
 		if ($file_param) $file = $file_param;
 		
+		$limit 				= -1;
+		$limit_param		= $this->getParameter('limit');
+		if ($limit_param) $limit = $limit_param;
+		
 		// Get results
 		$core 								= $this->getCore();	
 		$data_container 					= new stdClass();
-		$data_container->data 				= $core->GetRules( $file );
+		$data_container->data 				= $core->GetRules( $file, $limit );
+		$data_container->draw 				= 1;
+		$data_container->recordsTotal 		= count($data_container->data);
+		$data_container->recordsFiltered 	= count($data_container->data);
+		$this->response(json_encode($data_container),200);
+	}
+	
+	public function searchrules() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$params 					= new stdClass();
+		$params->quick 				= $this->getParameter('quick') ? $this->getParameter('quick') : -1;	
+		$params->file 				= $this->getParameter('file') ? $this->getParameter('file') : -1;		
+		$params->limit 				= $this->getParameter('limit') ? $this->getParameter('limit') : -1;	
+		$params->is_private 		= $this->getParameter('is_private') ? $this->getParameter('is_private') : -1;
+		$params->is_global 			= $this->getParameter('is_global') ? $this->getParameter('is_global') : -1;
+		$params->name 				= $this->getParameter('name') ? $this->getParameter('name') : -1;
+		$params->tags 				= $this->getParameter('tags') ? $this->getParameter('tags') : -1;
+		$params->author				= $this->getParameter('author') ? $this->getParameter('author') : -1;	
+		$params->threat				= $this->getParameter('threat') ? $this->getParameter('threat') : -1;	
+		$params->comment			= $this->getParameter('comment') ? $this->getParameter('comment') : -1;	
+		$params->metas				= $this->getParameter('metas') ? $this->getParameter('metas') : -1;	
+		$params->strings			= $this->getParameter('strings') ? $this->getParameter('strings') : -1;	
+		$params->condition   		= $this->getParameter('condition') ? $this->getParameter('condition') : -1;	
+		
+		// Get results
+		$core 								= $this->getCore();	
+		$data_container 					= new stdClass();
+		$data_container->data 				= $core->SearchRules( $params );
 		$data_container->draw 				= 1;
 		$data_container->recordsTotal 		= count($data_container->data);
 		$data_container->recordsFiltered 	= count($data_container->data);

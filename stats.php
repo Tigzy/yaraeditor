@@ -24,6 +24,12 @@ scratch. This page gets rid of all links and provides the needed markup only.
   <link rel="stylesheet" href="plugins/font-awesome/css/font-awesome.min.css">
   <!-- Ionicons -->
   <link rel="stylesheet" href="plugins/ionicons/css/ionicons.min.css">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="plugins/datatables/css/dataTables.bootstrap.css">
+  <link rel="stylesheet" href="plugins/datatables/extensions/Buttons/css/buttons.bootstrap.min.css">
+  <link rel="stylesheet" href="plugins/datatables/extensions/Select/css/select.bootstrap.min.css">
+  <link rel="stylesheet" href="plugins/datatables/extensions/Editor/css/editor.bootstrap.min.css">
+  <link rel="stylesheet" href="plugins/datatables/extensions/Responsive/css/responsive.bootstrap.min.css">
   <!-- Theme style -->
   <link rel="stylesheet" href="dist/css/AdminLTE.min.css">
   <!-- Pace style -->
@@ -102,25 +108,25 @@ desired effect
 		
 			<!-- Left col -->
 			<section class="col-lg-4 connectedSortable">
-				<div class="box box-default">
-	                <div class="box-header with-border">
-	                  <h3 class="box-title">Repository Information</h3>
-	                  <div class="box-tools pull-right">
-	                    <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
-	                  </div>
-	                </div>
-	                <!-- /.box-header -->
-	                <div class="box-body">
-	                   <span style="font-weight: bold; color: black;">YaraEditor (Web) v<?php echo $GLOBALS["config"]["version"]?></span>
-						<br/>
-						<span>Files: </span>
-						<span id="files-count" style="font-weight: bold; color: black;"> Not available</span>
-						<br/>
-						<span>Rules: </span>
-						<span id="rules-count" style="font-weight: bold; color: black;"> Not available</span>
-	                </div>
-	                <!-- /.box-body -->
-              	</div>
+			  <!-- Widget: user widget style 1 -->
+          	  <div class="box box-widget widget-user-2">
+				<!-- Add the bg color to the header using any of the bg-* classes -->
+	            <div class="widget-user-header bg-red-active">
+	              <div class="widget-user-image">
+	                <img class="img-circle" src="./favicon.ico" alt="User Avatar">
+	              </div>
+	              <!-- /.widget-user-image -->
+	              <h3 class="widget-user-username">YaraEditor</h3>
+	              <h5 class="widget-user-desc">Web Edition</h5>
+	            </div>
+	            <div class="box-footer no-padding">
+	              <ul class="nav nav-stacked">
+	                <li><a href="#">Version <span class="pull-right badge bg-blue"><?php echo $GLOBALS["config"]["version"]?></span></a></li>
+	                <li><a href="#">Files <span id="files-count" class="pull-right badge bg-aqua">5</span></a></li>
+	                <li><a href="#">Rules <span id="rules-count" class="pull-right badge bg-red">12</span></a></li>
+	              </ul>
+	            </div>
+	          </div>
 			</section>	
 			
 			<!-- Left col -->
@@ -164,6 +170,34 @@ desired effect
 				</div>
 				<!-- /.box -->
 			</section>		
+			
+			<!-- Left col -->
+			<section class="col-lg-12 connectedSortable">
+				<!-- Horizontal Form -->
+          		<div class="box box-info">
+		          <div class="box-header with-border">
+		            <h3 class="box-title">Last Rules</h3>
+		          </div>             
+		          <div class="box-body">
+		            <table id="last-rules" class="table table-bordered table-striped dt-responsive" width="100%" cellspacing="0">
+		              <thead>
+		              <tr>
+		                <th>Rule</th>
+		                <th>Author</th>
+		                <th>File</th>
+		                <th>Threat</th>
+		                <th>Tags</th>                         
+		                <th>Last Modified</th>
+		                <th>Created</th>
+		              </tr>
+		              </thead>
+		              <tbody>              
+		              </tbody>
+		            </table>
+		          </div>
+		          <!-- /.box-body -->          
+	        	</div>			
+			</section>	
 		
 			<!-- Left col -->
 			<section class="col-lg-12 connectedSortable">
@@ -216,6 +250,17 @@ desired effect
 <!-- Bootstrap 3.3.6 -->
 <!-- Bootstrap needs to be placed AFTER jquery-ui because of tootltip conflicts -->
 <script src="plugins/bootstrap/js/bootstrap.min.js"></script>
+<!-- DataTables -->
+<script src="plugins/datatables/js/jquery.dataTables.js"></script>
+<script src="plugins/datatables/js/dataTables.bootstrap.js"></script>
+<script src="plugins/datatables/extensions/Buttons/js/dataTables.buttons.js"></script>
+<script src="plugins/datatables/extensions/Buttons/js/buttons.bootstrap.js"></script>
+<script src="plugins/datatables/extensions/Select/js/dataTables.select.js"></script>
+<script src="plugins/datatables/extensions/Editor/js/dataTables.editor.js"></script>
+<script src="plugins/datatables/extensions/Editor/js/editor.bootstrap.js"></script>
+<script src="plugins/datatables/extensions/Editor/js/editor.tinymce.js"></script>
+<script src="plugins/datatables/extensions/Responsive/js/dataTables.responsive.min.js"></script>
+<script src="plugins/datatables/extensions/Responsive/js/responsive.bootstrap.min.js"></script>
 <!-- ChartJS 2.2.2 -->
 <script src="plugins/chartjs/2.2.2/Chart.min.js"></script>
 <!-- JQCloud -->
@@ -233,7 +278,8 @@ function initStats()
 		refreshRepoInformation(),
 		refreshTimeLine(),
 		refreshUploaders(),
-		refreshTags()
+		refreshTags(),
+		refreshLastRules()
 	).always(function(a1, a2, a3, a4) {
 		Pace.stop();
 	});
@@ -351,6 +397,77 @@ function refreshTags()
 		});
 	    $c.jQCloud(words);
     }); 
+}
+
+function refreshLastRules()
+{
+	var table;		  	
+		
+	table = $('#last-rules').DataTable({
+      dom: "frtip",
+      paging: true,
+      lengthChange: true,
+      searching: true,
+      ordering: true,
+      info: true,
+      autoWidth: true,
+      processing: false,
+      serverSide: false,
+      responsive: true,
+      fnInitComplete: function (oSettings, json) {
+		  Pace.stop();
+      },
+      ajax: {
+		  type: "GET",
+		  dataType: "json",
+		  url: "api.php",
+		  data: function( data ) {
+			  data.action 	= 'getrules';
+			  data.limit    = 20;
+		  },
+	  },   
+      columns: [
+    	{ 
+	    	data: "name", 
+	    	width: "20%",
+	    	render: function (data, type, row) 
+	    	{
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.id + "' target='_blank'>" + data + " (#" + row.id + ")" + "</a>";
+	        }
+	    },
+	    { data: "author", width: "10%" },
+	    { data: "file_name", width: "10%" },
+	    { 
+			data: "threat",
+			width: "20%",
+			render: function (data, type, row) 
+	    	{
+				if (data != undefined) {
+					return "<span class='label label-danger' style='font-size: 12px;'>" + data + "</span>";
+				}
+				else {
+					return "";
+				}
+	        }
+	    },
+		{ 
+			data: "tags",
+			width: "20%",
+			render: function (data, type, row) 
+	    	{
+				content = "";
+				$.each(data, function(index, item) {
+					content += "<span class='label label-success' style='margin-right:5px; font-size: 12px;'>" + item + "</span>";
+				});
+				return content;
+	        }
+	    },	    
+		{ data: "last_modified", width: "10%" },
+		{ data: "created", width: "10%" }
+      ],
+      order: [[ 4, "desc" ]],
+      select: true    
+  });
 }
 
 $(function() {

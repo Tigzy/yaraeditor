@@ -246,13 +246,38 @@ class YEdCore
 	
 	//=====================================
 	
-	public function GetRules($file_id)
+	public function GetRules($file_id = -1, $limit = -1)
 	{
-		$rules = $this->database->GetRules($file_id);
+		$rules = $this->database->GetRules($file_id, $limit);	
+		$users = $this->GetUsers();
 		foreach($rules as &$rule)
 		{
-			$rule_user 			= new UCUser($rule["author_id"], true);		
-			$rule["author"] 	= $rule_user->DisplayName();
+			$rule["author"] = "";
+			foreach($users as $user)
+			{
+				if ($user["id"] == $rule["author_id"])
+				{
+					$rule["author"] = $user["display_name"];
+				}
+			}
+		}
+		return $rules;
+	}
+	
+	public function SearchRules($params)
+	{
+		$rules = $this->database->SearchRules($params);
+		$users = $this->GetUsers();
+		foreach($rules as &$rule)
+		{
+			$rule["author"] = "";
+			foreach($users as $user)
+			{
+				if ($user["id"] == $rule["author_id"])
+				{
+					$rule["author"] = $user["display_name"];
+				}
+			}
 		}
 		return $rules;
 	}
