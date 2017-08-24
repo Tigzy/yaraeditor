@@ -118,6 +118,7 @@ class QueryTable
 	private $insert     = array();		// Associative array ('key' => 'value')
 	private $rawselect  = array();		// Associative array, used for RAW data (COUNT(*), etc...)
 	private $where 		= array();
+	private $wherecond  = 'AND';
 	private $rawwhere   = array();
 	private $orderby 	= array();
 	private $groupby    = array();
@@ -152,6 +153,10 @@ class QueryTable
 	public function setRawWhere(array $where) {
 		$this->rawwhere = $where;
 	}
+	
+	public function setWhereCondition($wherecond) {
+		$this->wherecond = $wherecond;
+	}	
 	
 	public function setJoinType($jointype) {
 		$this->jointype = $jointype;
@@ -231,6 +236,10 @@ class QueryTable
 	
 	public function getRawWheres() {
 		return $this->rawwhere;
+	}
+	
+	public function whereCondition() {
+		return $this->wherecond;
 	}
 	
 	public function getWhere() {
@@ -465,7 +474,7 @@ class QueryBuilder
 		foreach ($this->tables as $table){
 			$wheres = $table->getWhere();
 			foreach ($wheres as $where) {
-				$query = $query . ($is_first ? " WHERE " : " AND ") . ($aliases ? $table->getName() . "." : "") . $where->getLeft() . " " . $where->getOperator() . " ";
+				$query = $query . ($is_first ? " WHERE " : " " . $table->whereCondition() . " ") . ($aliases ? $table->getName() . "." : "") . $where->getLeft() . " " . $where->getOperator() . " ";
 				if ($where->getType() == 'int') 		$query = $query . $where->getRight();
 				elseif ($where->getType() == 'field') 	$query = $query . $where->getRight();
 				else 									$query = $query . "'" . $where->getRight() . "'";
@@ -473,14 +482,14 @@ class QueryBuilder
 			}	
 			$wheres = $table->getRawWheres();
 			foreach ($wheres as $where) {
-				$query = $query . ($is_first ? " WHERE " : " AND ") . $where;
+				$query = $query . ($is_first ? " WHERE " : " " . $table->whereCondition() . " ") . $where;
 				$is_first = false;
 			}
 		}
 		foreach ($this->joins as $table){
 			$wheres = $table->getWhere();
 			foreach ($wheres as $where) {
-				$query = $query . ($is_first ? " WHERE " : " AND ") . ($aliases ? $table->getName() . "." : "") . $where->getLeft() . " " . $where->getOperator() . " ";
+				$query = $query . ($is_first ? " WHERE " : " " . $table->whereCondition() . " ") . ($aliases ? $table->getName() . "." : "") . $where->getLeft() . " " . $where->getOperator() . " ";
 				if ($where->getType() == 'int') 		$query = $query . $where->getRight();
 				elseif ($where->getType() == 'field') 	$query = $query . $where->getRight();
 				else 									$query = $query . "'" . $where->getRight() . "'";
@@ -488,7 +497,7 @@ class QueryBuilder
 			}	
 			$wheres = $table->getRawWheres();
 			foreach ($wheres as $where) {
-				$query = $query . ($is_first ? " WHERE " : " AND ") . $where;
+				$query = $query . ($is_first ? " WHERE " : " " . $table->whereCondition() . " ") . $where;
 				$is_first = false;
 			}
 		}
