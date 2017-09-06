@@ -156,7 +156,7 @@ desired effect
 					  <div class="panel panel-info">
 					    <div class="panel-heading">
 					      <h4 class="panel-title">
-					        <a data-toggle="collapse" href="#collapse_search"><span class="fa fa-search"></span> Advanced Search</a>
+					        <a data-toggle="collapse" href="#collapse_search"><span class="fa fa-search"></span> Advanced Search (matches all of them)</a>
 					      </h4>
 					    </div>
 					    <div id="collapse_search" class="panel-collapse collapse">

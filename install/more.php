@@ -14,14 +14,12 @@ function Install()
 	//=================================================================
 	// Permissions
 	
-	/*$permissions_entry = "
+	$permissions_entry = "
 	INSERT INTO `".$user_db->Prefix()."permissions` (`id`, `name`) VALUES
-	(3, 'Downloader'),
-	(4, 'Editor'),
-	(5, 'Uploader'),
-	(6, 'Cuckoo Uploader'),
-	(7, 'VirusTotal Uploader'),
-	(8, 'VirusTotal Contributor')
+	(3, 'Reader'),
+	(4, 'Contributor'),
+	(5, 'Manager'),
+	(6, 'Publisher')
 	";
 	
 	if($user_db->Execute($permissions_entry))
@@ -32,7 +30,7 @@ function Install()
 	{
 		echo "<p>Error inserting permissions.</p>";
 		$success = false;
-	}*/
+	}
 
 	//=================================================================
 	//Malware DB

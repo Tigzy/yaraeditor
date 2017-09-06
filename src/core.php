@@ -13,7 +13,11 @@ class YEdCore
 	private $modules			= array();
 	private $database			= null;
 	
-	//const perm_user_admin 			= 2;
+	const perm_user_admin 			= 2;
+	const perm_user_reader 			= 3;
+	const perm_user_contributor 	= 4;
+	const perm_user_manager 		= 5;
+	const perm_user_publisher 		= 6;
 	
 	public function __construct()
 	{		
@@ -42,6 +46,51 @@ class YEdCore
 		return self::$instance;
 	}
 	
+	public function CheckPermissions($permission, $rule_id = NULL)
+	{
+		global $user;
+		return $this->HasPermission($user->Id(), $permission, $rule_id);
+	}
+	
+	// Check if we can touch the file
+	public function HasPermission($user, $permission, $rule_id = null)
+	{	
+		if (!$user) return False;
+				
+		// Edit permissions
+		if ($permission == 'read') {			
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_reader, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
+		} 
+		else if ($permission == 'add') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'edit' && $rule_id) {
+			$rule = $this->GetRule($rule_id);
+			if (!$rule) return False;			
+			if ($rule["author_id"] == $user && UCUser::ValidateUserPermission($user, array(self::perm_user_contributor))) return True;	// Contributor can only edit own rules
+			else return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+		} 
+		else if ($permission == 'add_file') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'edit_file') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'clear_history') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'clear_recycle') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'validate') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'publish') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_publisher));
+		}
+		return False;
+	}
+	
 	public function GetUsers(){
 		global $user_db;
 		return $user_db->UsersFullData();
@@ -53,11 +102,17 @@ class YEdCore
 	
 	public function GetFiles($folder_id)
 	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
 		return $this->database->GetFiles();
 	}
 	
 	public function ExportFile($file_id)
 	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
 		// Generate file
 		$file_path	= tempnam(sys_get_temp_dir(), 'yed');
 		$file_name 	= basename($file_path);
@@ -80,6 +135,9 @@ class YEdCore
 	
 	public function ExportRule($rule_id)
 	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
 		// Generate file
 		$file_path	= tempnam(sys_get_temp_dir(), 'yed');
 		$file_name 	= basename($file_path);
@@ -189,27 +247,50 @@ class YEdCore
 	
 	public function GetFile($file_id)
 	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
 		return $this->database->GetFile($file_id);
 	}	
 	
 	public function AddFile($file_name, $imports)
 	{
-		return $this->database->AddFile($file_name, $imports);
+		if (!$this->CheckPermissions('add_file'))
+			return False;
+					
+		$id = $this->database->AddFile($file_name, $imports);
+		if ($id != 0) {
+			$this->AddFileActionToHistory('add', $id, $file_name);
+		}
+		return $id;
 	}
 	
 	public function UpdateFile($file_id, $file_name, $imports)
 	{
-		return $this->database->UpdateFile($file_id, $file_name, $imports);
+		if (!$this->CheckPermissions('edit_file'))
+			return False;
+		
+		$old_file 	= $this->GetFile($file_id);			
+		$success 	= $this->database->UpdateFile($file_id, $file_name, $imports);
+		if ($success) {
+			$this->AddFileActionToHistory('edit', $file_id, $file_name, $this->GetFile($file_id), $old_file);
+		}
+		return $success;
 	}
 	
 	public function DeleteFile($file_id)
 	{
-		$success = $this->database->DeleteFile($file_id);
+		if (!$this->CheckPermissions('edit_file'))
+			return False;
+		
+		$old_file 	= $this->GetFile($file_id);	
+		$success 	= $this->database->DeleteFile($file_id);
 		if ($success) {
 			$this->database->DeleteFileMetas($file_id);
+			$this->AddFileActionToHistory('delete', $file_id, $old_file["name"], array(), $old_file);
 			
 			// remove rules
-			$rules_to_remove = $this->database->GetRules($file_id);
+			$rules_to_remove = $this->database->GetRules($file_id, -1, YEdDatabase::status_all);
 			foreach($rules_to_remove as $rule) {
 				$success = $success && $this->DeleteRule($rule["id"]);
 			}
@@ -219,14 +300,17 @@ class YEdCore
 	
 	public function CopyFile($file_id, &$new_name)
 	{
+		if (!$this->CheckPermissions('edit_file'))
+			return 0;
+		
 		$file 	= $this->database->GetFile($file_id);		
 		$id 	= $this->database->CopyFile($file_id);
 		if ($id != 0) 
 		{
-			$this->database->CopyFileMetas($file_id, $id);
+			$this->database->CopyFileMetas($file_id, $id);			
 			
 			// Copy rules and move into new file
-			$rules_to_copy = $this->database->GetRules($file_id);
+			$rules_to_copy = $this->database->GetRules($file_id, -1, YEdDatabase::status_not_recyclebin);
 			foreach($rules_to_copy as $rule) {
 				$new_rule_id = $this->CopyRule($rule["id"], $rule["name"]);
 				$this->MoveRule($new_rule_id, $id);
@@ -239,16 +323,20 @@ class YEdCore
 			while ($this->database->FileExists($new_name)) {
 				$new_name = $new_name . " (copy)";
 			}
-			$this->database->RenameFile($id, $new_name);			
+			$this->database->RenameFile($id, $new_name);
+			$this->AddFileActionToHistory('add', $id, $new_name);
 		}
 		return $id;
 	}
 	
 	//=====================================
 	
-	public function GetRules($file_id = -1, $limit = -1)
+	public function GetRules($file_id = -1, $limit = -1, $status = YEdDatabase::status_not_recyclebin)
 	{
-		$rules = $this->database->GetRules($file_id, $limit);	
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
+		$rules = $this->database->GetRules($file_id, $limit, $status);	
 		$users = $this->GetUsers();
 		foreach($rules as &$rule)
 		{
@@ -266,6 +354,9 @@ class YEdCore
 	
 	public function SearchRules($params)
 	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
 		$rules = $this->database->SearchRules($params);
 		$users = $this->GetUsers();
 		foreach($rules as &$rule)
@@ -284,6 +375,9 @@ class YEdCore
 	
 	public function GetRule($rule_id)
 	{
+		if (!$this->CheckPermissions('read'))
+			return NULL;
+		
 		$rule = $this->database->GetRule($rule_id);
 		if (empty($rule)) return NULL;
 		
@@ -291,6 +385,7 @@ class YEdCore
 		$rule["author_id"] 	= $this->database->GetRuleMetaValue($rule_id, "__author");
 		$rule["comment"] 	= $this->database->GetRuleMetaValue($rule_id, "__comment");
 		$rule["threat"] 	= $this->database->GetRuleMetaValue($rule_id, "__threat");
+		$rule["is_public"] 	= $this->database->GetRuleMetaValue($rule_id, "__public");
 		
 		// Retrieve author information
 		$rule_user 			= new UCUser($rule["author_id"], true);		
@@ -307,11 +402,18 @@ class YEdCore
 	
 	public function CreateRule($rule_content)
 	{
+		if (!$this->CheckPermissions('add'))
+			return 0;
+		
 		$id = $this->database->CreateRule($rule_content);
+		if ($id == 0) {
+			return 0;
+		}
 		
 		$this->database->CreateRuleMeta($id, "__author", $rule_content->author_id);
 		$this->database->CreateRuleMeta($id, "__comment", $rule_content->comment);
 		$this->database->CreateRuleMeta($id, "__threat", $rule_content->threat);
+		$this->database->CreateRuleMeta($id, "__public", $rule_content->is_public);
 		
 		// Create metas
 		foreach($rule_content->metas as $meta)
@@ -328,16 +430,22 @@ class YEdCore
 		}
 		
 		$this->database->MarkFileAsUpdated($rule_content->file_id);
+		$this->AddRuleActionToHistory('add', $id, $rule_content->name, $this->GetRule($id), NULL);
 		return $id;
 	}
 	
 	public function UpdateRule($rule_id, $rule_content)
 	{
+		if (!$this->CheckPermissions('edit', $rule_id))
+			return False;
+		
+		$old_value = $this->GetRule($rule_id);
 		$success = $this->database->UpdateRule($rule_id, $rule_content);	
 		
 		$this->database->UpdateRuleMeta($rule_id, "__author", $rule_content->author_id);
 		$this->database->UpdateRuleMeta($rule_id, "__comment", $rule_content->comment);
 		$this->database->UpdateRuleMeta($rule_id, "__threat", $rule_content->threat);
+		$this->database->UpdateRuleMeta($rule_id, "__public", $rule_content->is_public);
 		
 		// Update metas
 		//================================
@@ -390,11 +498,15 @@ class YEdCore
 		}	
 		
 		$this->database->MarkFileAsUpdated($rule_content->file_id);
+		$this->AddRuleActionToHistory('edit', $rule_id, $rule_content->name, $this->GetRule($rule_id), $old_value);
 		return $success;
 	}
 	
 	public function DeleteRule($rule_id)
 	{
+		if (!$this->CheckPermissions('edit', $rule_id))
+			return False;
+		
 		$rule 	 = $this->database->GetRule($rule_id);
 		$success = $this->database->DeleteRule($rule_id);
 		if ($success) {
@@ -407,12 +519,44 @@ class YEdCore
 			$this->database->DeleteStrings($rule_id);
 			
 			$this->database->MarkFileAsUpdated($rule["file_id"]);
+			$this->AddRuleActionToHistory('delete', $rule_id, $rule["name"], NULL, $rule);
+		}
+		return $success;
+	}
+	
+	public function MoveRuleToRecycleBin($rule_id)
+	{
+		if (!$this->CheckPermissions('edit', $rule_id))
+			return False;
+		
+		$rule 	 = $this->database->GetRule($rule_id);
+		$success = $this->database->MoveRuleToRecycleBin($rule_id);
+		if ($success) {			
+			$this->database->MarkFileAsUpdated($rule["file_id"]);
+			$this->AddRuleActionToHistory('recyclebin', $rule_id, $rule["name"], NULL, $rule);
+		}
+		return $success;
+	}
+	
+	public function RestoreRule($rule_id)
+	{
+		if (!$this->CheckPermissions('edit', $rule_id))
+			return False;
+		
+		$rule 	 = $this->database->GetRule($rule_id);
+		$success = $this->database->RestoreRule($rule_id);
+		if ($success) {			
+			$this->database->MarkFileAsUpdated($rule["file_id"]);
+			$this->AddRuleActionToHistory('restore', $rule_id, $rule["name"], NULL, $rule);
 		}
 		return $success;
 	}
 	
 	public function CopyRule($rule_id, &$new_name)
 	{
+		if (!$this->CheckPermissions('add'))
+			return False;
+		
 		$rule 	= $this->database->GetRule($rule_id);		
 		$id 	= $this->database->CopyRule($rule_id);
 		if ($id != 0) 
@@ -441,13 +585,22 @@ class YEdCore
 			}
 			
 			$this->database->MarkFileAsUpdated($rule["file_id"]);
+			$this->AddRuleActionToHistory('add', $id, $new_name, $rule, NULL);
 		}
 		return $id;
 	}
 	
 	public function MoveRule($rule_id, $file_id)
 	{
-		return $this->database->MoveRule($rule_id, $file_id);
+		if (!$this->CheckPermissions('edit', $rule_id))
+			return False;
+		
+		$rule 	 = $this->database->GetRule($rule_id);		
+		$success = $this->database->MoveRule($rule_id, $file_id);
+		if ($success) {
+			$this->AddRuleActionToHistory('edit', $rule_id, $rule["name"], $this->GetRule($rule_id), $rule);
+		}
+		return $success;
 	}
 	
 	//====================================================
@@ -510,6 +663,97 @@ class YEdCore
 		// String type
 		$sanitized_meta_value = $meta_value;
 		return "string";
+	}
+	
+	//====================================================
+	
+	public function ClearHistory()
+	{
+		if (!$this->CheckPermissions('clear_history'))
+			return False;
+		
+		return $this->database->ClearHistory();
+	}
+	
+	public function GetHistory($limit)
+	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
+		$history 	= $this->database->GetHistory($limit);	
+		$users 		= $this->GetUsers();
+		foreach($history as &$item)
+		{
+			$item["user_name"] = "";
+			foreach($users as $user)
+			{
+				if ($user["id"] == $item["user"])
+				{
+					$item["user_name"] = $user["display_name"];
+				}
+			}
+		}
+		return $history;
+	}
+	
+	public function AddFileActionToHistory($action, $file_id, $file_name, $file_value = array(), $file_old_value = array())
+	{
+		global $user;		
+		$item 				= new stdClass();
+		$item->user 		= $user->Id();
+		$item->action 		= $action;
+		$item->item_id 		= $file_id;
+		$item->item_type    = 'file';
+		$item->item_name 	= $file_name;
+		$item->item_value 	= json_encode($file_value);
+		$item->item_oldvalue = json_encode($file_old_value);		
+		return $this->database->AddToHistory($item);
+	}
+	
+	public function AddRuleActionToHistory($action, $rule_id, $rule_name, $rule_value = array(), $rule_old_value = array())
+	{
+		global $user;		
+		$item 				= new stdClass();
+		$item->user 		= $user->Id();
+		$item->action 		= $action;
+		$item->item_id 		= $rule_id;
+		$item->item_type    = 'rule';
+		$item->item_name 	= $rule_name;
+		$item->item_value 	= json_encode($rule_value);	
+		$item->item_oldvalue = json_encode($rule_old_value);		
+		return $this->database->AddToHistory($item);
+	}
+	
+	//====================================================
+	
+	public function ClearRecycleBin()
+	{
+		if (!$this->CheckPermissions('clear_recycle'))
+			return False;
+		
+		// remove rules
+		$success = true;
+		$rules_to_remove = $this->database->GetRules(-1, -1, YEdDatabase::status_recyclebin);
+		foreach($rules_to_remove as $rule) {
+			$success = $success && $this->DeleteRule($rule["id"]);
+		}
+		return $success;
+	}
+	
+	public function SearchThreat($request)
+	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
+		return $this->database->SearchThreat($request);
+	}
+	
+	public function SearchRuleName($request)
+	{
+		if (!$this->CheckPermissions('read'))
+			return False;
+		
+		return $this->database->SearchRuleName($request);
 	}
 	
 	//====================================================

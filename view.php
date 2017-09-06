@@ -87,9 +87,10 @@ scratch. This page gets rid of all links and provides the needed markup only.
 }
 .myTag 
 {
-    background-color: #428bca !important;
-    color: #fff !important;   
-    font-size: 16px;
+    background-color: #367fa9 !important;
+    color: #fff !important; 
+	padding: 6px;
+	border-radius: 5px;
 }
 .tm-input
 {

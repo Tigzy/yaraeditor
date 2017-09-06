@@ -93,6 +93,10 @@ class Rest_Api extends Rest_Rest {
 		$data_container->draw 				= 1;
 		$data_container->recordsTotal 		= count($data_container->data);
 		$data_container->recordsFiltered 	= count($data_container->data);
+		if (!is_array($data_container->data)) {
+			$this->response("unable to get files",403);
+			return false;
+		}
 		$this->response(json_encode($data_container),200);
 	}
 	
@@ -107,6 +111,10 @@ class Rest_Api extends Rest_Rest {
 		// Get results
 		$core 				= $this->getCore();	
 		$data 				= $core->GetFiles( $folder );
+		if (!$data) {
+			$this->response("unable to get files",403);
+			return false;
+		}
 		$this->response(json_encode($data),200);
 	}
 	
@@ -120,7 +128,12 @@ class Rest_Api extends Rest_Rest {
 		
 		// Get results
 		$core = $this->getCore();	
-		$this->response(json_encode($core->GetFile($file_id)),200);
+		$data = $core->GetFile($file_id);
+		if (!$data) {
+			$this->response("unable to get file",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
 	}
 	
 	public function exportfile()
@@ -173,10 +186,14 @@ class Rest_Api extends Rest_Rest {
 		// Get results
 		$core 								= $this->getCore();	
 		$data_container 					= new stdClass();
-		$data_container->data 				= $core->GetRules( $file, $limit );
+		$data_container->data 				= $core->GetRules( $file, $limit, YEdDatabase::status_not_recyclebin );
 		$data_container->draw 				= 1;
 		$data_container->recordsTotal 		= count($data_container->data);
 		$data_container->recordsFiltered 	= count($data_container->data);
+		if (!is_array($data_container->data)) {
+			$this->response("unable to get rules",403);
+			return false;
+		}
 		$this->response(json_encode($data_container),200);
 	}
 	
@@ -191,6 +208,7 @@ class Rest_Api extends Rest_Rest {
 		$params->limit 				= $this->getParameter('limit') ? $this->getParameter('limit') : -1;	
 		$params->is_private 		= $this->getParameter('is_private') ? $this->getParameter('is_private') : -1;
 		$params->is_global 			= $this->getParameter('is_global') ? $this->getParameter('is_global') : -1;
+		$params->is_public 			= $this->getParameter('is_public') ? $this->getParameter('is_public') : -1;
 		$params->name 				= $this->getParameter('name') ? $this->getParameter('name') : -1;
 		$params->tags 				= $this->getParameter('tags') ? $this->getParameter('tags') : -1;
 		$params->author				= $this->getParameter('author') ? $this->getParameter('author') : -1;	
@@ -207,6 +225,10 @@ class Rest_Api extends Rest_Rest {
 		$data_container->draw 				= 1;
 		$data_container->recordsTotal 		= count($data_container->data);
 		$data_container->recordsFiltered 	= count($data_container->data);
+		if (!is_array($data_container->data)) {
+			$this->response("unable to get rules",403);
+			return false;
+		}
 		$this->response(json_encode($data_container),200);
 	}
 	
@@ -220,8 +242,12 @@ class Rest_Api extends Rest_Rest {
 		// Get results
 		$core = $this->getCore();	
 		$rule = $core->GetRule($rule_id);
-		if ($rule != NULL)
+		if ($rule != NULL) {
+			if (!isset($rule["is_public"]) || !$rule["is_public"]) {
+				$this->validateKey();
+			}			
 			$this->response(json_encode($rule),200);
+		}
 		else
 			$this->response("unable to find the rule",404);
 	}
@@ -245,7 +271,8 @@ class Rest_Api extends Rest_Rest {
 		// Sanity check, #1 check fields existence
 		if (!isset($rule_content->file_id)) {$this->response('file_id not set',400); return false; }
 		if (!isset($rule_content->is_private)) {$this->response('is_private not set',400); return false; }
-		if (!isset($rule_content->is_global)) {$this->response('is_global not set',400); return false; }		
+		if (!isset($rule_content->is_global)) {$this->response('is_global not set',400); return false; }
+		if (!isset($rule_content->is_public)) {$this->response('is_public not set',400); return false; }	
 		if (!isset($rule_content->name)) {$this->response('rulename not set',400); return false; }		
 		if (!isset($rule_content->threat)) {$this->response('threat not set',400); return false; }		
 		if (!isset($rule_content->comment)) {$this->response('comment not set',400); return false; }
@@ -268,7 +295,7 @@ class Rest_Api extends Rest_Rest {
 		if ($rule_id == -1) 
 		{
 			$id = $core->CreateRule($rule_content);
-			if ($id == -1) { $this->response('unable to create rule',400); return false; }
+			if ($id == 0) { $this->response('unable to create rule',400); return false; }
 			
 			$data->id = $id;
 			$this->response(json_encode($data), 201);
@@ -375,6 +402,24 @@ class Rest_Api extends Rest_Rest {
 		$this->response(json_encode($data),201);
 	}
 	
+	public function moverulerecyclebin() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$rule_id = $this->getParameter("id");
+		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }
+		
+		$core = $this->getCore();
+		if ($core->MoveRuleToRecycleBin($rule_id)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to move rule to recycle bin',406); 
+			return false;
+		}
+	}
+	
 	public function deleterule() 
 	{
 		$this->validateKey();
@@ -385,6 +430,24 @@ class Rest_Api extends Rest_Rest {
 		
 		$core = $this->getCore();
 		if ($core->DeleteRule($rule_id)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to delete rule',406); 
+			return false;
+		}
+	}
+	
+	public function restorerule() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$rule_id = $this->getParameter("id");
+		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }
+		
+		$core = $this->getCore();
+		if ($core->RestoreRule($rule_id)) {		
 			$this->response("{}",200);
 		}
 		else {
@@ -465,6 +528,120 @@ class Rest_Api extends Rest_Rest {
 		$data_new->labels 			= $labels;
 		$data_new->points 			= $points;
 		echo json_encode($data_new);
+	}
+	
+	public function gethistory() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$limit 				= -1;
+		$limit_param		= $this->getParameter('limit');
+		if ($limit_param) $limit = $limit_param;
+		
+		// Get results
+		$core 								= $this->getCore();	
+		$data_container 					= new stdClass();
+		$data_container->data 				= $core->GetHistory($limit);
+		$data_container->draw 				= 1;
+		$data_container->recordsTotal 		= count($data_container->data);
+		$data_container->recordsFiltered 	= count($data_container->data);
+		if (!is_array($data_container->data)) {
+			$this->response("unable to get history",403);
+			return false;
+		}
+		$this->response(json_encode($data_container),200);
+	}
+	
+	public function clearhistory()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$core = $this->getCore();	
+		if ($core->ClearHistory()) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to clear history',406); 
+			return false;
+		}
+	}
+	
+	public function getrecycle() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$file 				= -1;
+		$file_param			= $this->getParameter('file');
+		if ($file_param) $file = $file_param;
+		
+		$limit 				= -1;
+		$limit_param		= $this->getParameter('limit');
+		if ($limit_param) $limit = $limit_param;
+		
+		// Get results
+		$core 								= $this->getCore();	
+		$data_container 					= new stdClass();
+		$data_container->data 				= $core->GetRules( $file, $limit, YEdDatabase::status_recyclebin );
+		$data_container->draw 				= 1;
+		$data_container->recordsTotal 		= count($data_container->data);
+		$data_container->recordsFiltered 	= count($data_container->data);
+		if (!is_array($data_container->data)) {
+			$this->response("unable to get rules",403);
+			return false;
+		}
+		$this->response(json_encode($data_container),200);
+	}
+	
+	public function clearrecycle()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$core = $this->getCore();	
+		if ($core->ClearRecycleBin()) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to clear history',406); 
+			return false;
+		}
+	}
+	
+	public function searchthreat()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$request = $this->getParameter("request");
+		if (is_null($request)) {$this->response('missing request parameter',400); return false; }
+		
+		$core = $this->getCore();	
+		$data = $core->SearchThreat($request);
+		if (!is_array($data)) {
+			$this->response("unable to search threats",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
+	}
+	
+	public function searchrulename()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$request = $this->getParameter("request");
+		if (is_null($request)) {$this->response('missing request parameter',400); return false; }
+		
+		$core = $this->getCore();	
+		$data = $core->SearchRuleName($request);
+		if (!is_array($data)) {
+			$this->response("unable to search threats",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
 	}
 }
 

@@ -309,14 +309,14 @@ desired effect
 	  delete_rule(id, 
 		function(data, code) {		
 		    $('#confirm-action').modal('hide');	
-			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rule removed.</div>');
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rule moved into recycle bin.</div>');
 			
 			Pace.stop();
 			refresh_rules();
 		},
 		function(message, error) {
 			$('#confirm-action').modal('hide');
-			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove rule</div>');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to move rule into recycle bin</div>');
 		}		
 	  );	
   }
@@ -414,7 +414,7 @@ desired effect
 	  $('#confirm-action').find('#confirm-file-name').hide();
 	  $('#confirm-action').find('#new-file-name').val("");	
 	  $('#confirm-action').find('.modal-header').html("Rule removal");
-	  $('#confirm-action').find('#modal-message').html("This will remove the rule, do you want to proceed?");	  
+	  $('#confirm-action').find('#modal-message').html("This will put the rule into recycle bin, do you want to proceed?");	  
 	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'rule_delete(' + id + ')');
 	  $('#confirm-action').modal('show');
   }

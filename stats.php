@@ -465,7 +465,7 @@ function refreshLastRules()
 		{ data: "last_modified", width: "10%" },
 		{ data: "created", width: "10%" }
       ],
-      order: [[ 4, "desc" ]],
+      order: [[ 5, "desc" ]],
       select: true    
   });
 }

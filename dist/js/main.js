@@ -98,6 +98,38 @@ function update_rule(rule_id, rule_content, onSuccess, onFailure)
 function delete_rule(rule_id, onSuccess, onFailure)
 {
 	return $.ajax({
+		url: 'api.php?action=moverulerecyclebin',
+		dataType: 'json',	
+		data: {id: rule_id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function restore_rule(rule_id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=restorerule',
+		dataType: 'json',	
+		data: {id: rule_id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function delete_rule_from_recycle_bin(rule_id, onSuccess, onFailure)
+{
+	return $.ajax({
 		url: 'api.php?action=deleterule',
 		dataType: 'json',	
 		data: {id: rule_id},	
@@ -222,6 +254,68 @@ function update_file(file_id, file_name, file_imports, onSuccess, onFailure)
 	});
 }
 
+function clear_history(onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=clearhistory',
+		dataType: 'json',
+		type: 'post',				
+		success: function(data) { 
+			if (onSuccess) onSuccess(data); 				
+		},
+		error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure();             
+        }
+	});
+}
+
+function clear_recycle(onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=clearrecycle',
+		dataType: 'json',
+		type: 'post',				
+		success: function(data) { 
+			if (onSuccess) onSuccess(data); 				
+		},
+		error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure();             
+        }
+	});
+}
+
+function threat_search(request, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=searchthreat',
+		dataType: 'json',	
+		data: {request: request},	
+		type: 'get',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function rulename_search(request, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=searchrulename',
+		dataType: 'json',	
+		data: {request: request},	
+		type: 'get',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
 //================================================
 // UI functions
 
@@ -248,6 +342,9 @@ function loadRule(rule_id, file_id) {
 						
 						// Global
 						$('input#isglobal').prop('checked', data.is_global);
+						
+						// Public
+						$('input#ispublic').prop('checked', data.is_public);
 					
 						// File
 						$("select#rule-file").val( data.file_id );	
@@ -316,7 +413,7 @@ function loadRule(rule_id, file_id) {
 	);
 }
 
-function onRuleFormChanged() {
+function onRuleFormChanged() {	
 	refreshRulePreview();
 }
 
@@ -329,6 +426,9 @@ function serializeRuleInput() {
 	
 	// Global
 	serialized.is_global = ($('input#isglobal').is(":checked"));
+	
+	// Public
+	serialized.is_public = ($('input#ispublic').is(":checked"));
 	
 	// File ID
 	serialized.file_id = $("select#rule-file").val();
@@ -406,7 +506,7 @@ function refreshRulePreview() {
 	// Header
 	default_content = default_content 
 		+ (input.is_private ? "private " : "")
-		+ ((input.is_global && !input.is_private) ? "global " : "")
+		+ (input.is_global  ? "global " : "")
 		+ "rule " + input.name;
 
 	// Tags

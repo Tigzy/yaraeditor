@@ -29,6 +29,8 @@ scratch. This page gets rid of all links and provides the needed markup only.
 <title><?php echo $user_settings->WebsiteName() ?></title>
 <!-- Tell the browser to be responsive to screen width -->
 <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
+<!-- JQuery-UI -->
+<link rel="stylesheet" href="plugins/jQueryUI/jquery-ui.min.css">
 <!-- Bootstrap 3.3.6 -->
 <link rel="stylesheet" href="plugins/bootstrap/css/bootstrap.min.css">
 <!-- Font Awesome -->
@@ -94,6 +96,11 @@ scratch. This page gets rid of all links and provides the needed markup only.
 {
 	margin-bottom: 0px !important;
 }
+
+.btn-check {
+    padding: 4px 10px !important;
+    font-size: 14px;
+    font-weight: 400;
 </style>
 </head>
 <!--
@@ -152,24 +159,34 @@ desired effect
 			        <div class="form-group">
 			            <input type="checkbox" name="isprivate" id="isprivate" autocomplete="off" onchange="onRuleFormChanged()" />
 			            <div class="btn-group" style="padding-right: 10px">
-			                <label for="isprivate" class="btn btn-primary">
+			                <label for="isprivate" class="btn btn-primary btn-check">
 			                    <span class="glyphicon glyphicon-ok"></span>
 			                    <span></span>
 			                </label>
-			                <label for="isprivate" class="btn btn-default active">
+			                <label for="isprivate" class="btn btn-default btn-check active">
 			                    Private
 			                </label>
 			            </div>
 			            <input type="checkbox" name="isglobal" id="isglobal" autocomplete="off" onchange="onRuleFormChanged()" />
 			            <div class="btn-group" style="padding-right: 10px">
-			                <label for="isglobal" class="btn btn-primary">
+			                <label for="isglobal" class="btn btn-primary btn-check">
 			                    <span class="glyphicon glyphicon-ok"></span>
 			                    <span></span>
 			                </label>
-			                <label for="isglobal" class="btn btn-default active">
+			                <label for="isglobal" class="btn btn-default btn-check active">
 			                    Global
 			                </label>
-			            </div>						
+			            </div>		
+			            <input type="checkbox" name="ispublic" id="ispublic" autocomplete="off" onchange="onRuleFormChanged()" />
+			            <div class="btn-group" style="padding-right: 10px">
+			                <label for="ispublic" class="btn btn-warning btn-check">
+			                    <span class="glyphicon glyphicon-ok"></span>
+			                    <span></span>
+			                </label>
+			                <label for="ispublic" class="btn btn-default btn-check active" data-toggle='tooltip' title='Make the rule visible from non logged users'>
+			                    Make public
+			                </label>
+			            </div>				
 						<div class="btn-group pull-right" style="padding-right: 10px">
 							<button id="save-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Save rule' OnClick="saveRule(<?php echo $rule_id ?>)"><span class="fa fa-save"></span></button>
 						</div>
@@ -199,10 +216,21 @@ desired effect
 						<div class="control-group col col-lg-12">
 							<div class="input-group">
 								<span class="input-group-addon" id="rule-name"><span class="fa fa-asterisk" style="padding-right: 10px"></span>Rule name</span>
-								<input type="text" id="rule-name" class="form-control" placeholder="MyRule" aria-describedby="rule-name" onkeyup="onRuleFormChanged()">
+								<input type="text" id="rule-name" class="form-control" placeholder="MyRule" aria-describedby="rule-name" onblur="onRuleNameChanged()" onkeyup="onRuleFormChanged()">
 							</div>
 						</div>
 					</div>
+					<?php if ($rule_id == "") { ?>	
+					<div id="name-didyoumean" class="row collapse out">
+						<div class="control-group col col-lg-12">
+							<div class="panel panel-info">
+								<div class="panel-heading" style="padding: 5px">
+							    	<span style="padding-left: 10px">Another rule exists with similar name : <a id="name-didyoumean-link" href="#" target="_blank"></a></span>
+							    </div>
+							</div>
+						</div>
+					</div>
+					<?php } ?>
 					<div class="row" style="padding-bottom: 10px">
 						<div class="control-group col col-lg-12">
 							<div class="input-group">
@@ -374,9 +402,45 @@ desired effect
 <!-- Charts -->
 <script src="dist/js/main.js"></script>
 <script>
+function onRuleNameChanged() 
+{	
+	var request = $("input#rule-name").val();
+	Pace.start();
+    rulename_search(request, 
+		function(data, code) {			  	
+			Pace.stop();
+			if (data.length > 0) 
+			{
+				$('#name-didyoumean').collapse('show');	
+				$('a#name-didyoumean-link').text(data[0].name);
+				$('a#name-didyoumean-link').attr("href", "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + data[0].id);
+			}
+			else {
+				$('#name-didyoumean').collapse('hide');	
+			}
+		},
+		function(message, error) {
+			$('#name-didyoumean').collapse('hide');	
+		}		
+	  );
+}
+
 function rule_view(id)
 {
 	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + id, "_self");
+}
+
+function search_threat(request, response)
+{
+    Pace.start();
+      threat_search(request.term, 
+		function(data, code) {			  	
+			Pace.stop();
+			response(data);
+		},
+		function(message, error) {
+		}		
+	  );
 }
 
 $(function () {
@@ -414,6 +478,11 @@ $(function () {
     $('.jsbtn').click(function(e) {
     	e.preventDefault();
     });	
+    
+    // Threat name autocomplete
+    $( "input#threat-name" ).autocomplete({
+    	source: search_threat
+    });
     
     // Metas
     // ===========================================================

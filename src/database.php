@@ -11,6 +11,10 @@ class YEdDatabase
 	private $mysqli;
 	private $last_error;
 	
+	const status_recyclebin 		= 'recyclebin';
+	const status_draft 				= 'draft';	
+	const status_all 				= 'all';			// pseudo status
+	const status_not_recyclebin 	= 'notrecyclebin';	// pseudo status
 	
 	public function __construct($db_host, $db_name, $db_user, $db_pass) 
 	{
@@ -230,8 +234,8 @@ class YEdDatabase
 	
 	public function GetRulesCount($file_id) 
 	{
-		$stmt = $this->mysqli->prepare("SELECT count(*) as count FROM rule WHERE file_id=?");
-		$stmt->bind_param($file_id);
+		$stmt = $this->mysqli->prepare("SELECT count(*) as count FROM rule WHERE file_id=? AND status<>?");
+		$stmt->bind_param($file_id, self::status_recyclebin);
 		$stmt->execute();
 		$stmt->bind_result($count);
 		$stmt->fetch();
@@ -239,33 +243,49 @@ class YEdDatabase
 		return (int) $count;
 	}
 	
-	public function GetRules($file_id = -1, $limit = -1) 
+	public function GetRules($file_id = -1, $limit = -1, $status = self::status_not_recyclebin) 
 	{
-		$query = "SELECT r.id, r.file_id, r.name, r.cond, r.is_private, r.is_global, r.tags, r.modified, r.created, 
-				(SELECT f.name FROM virtual_file f WHERE f.id = r.file_id) as file_name,
-				(SELECT m.value FROM rule_metas m WHERE m.rule_id = r.id AND m.name = '__threat') as threat,
-				(SELECT m.value FROM rule_metas m WHERE m.rule_id = r.id AND m.name = '__author') as author
-				FROM rule r";
+		$queryobj = new QueryBuilder();
+		$table_rule = new QueryTable('rule');
+		$table_rule->setSelect(array(
+				'id' => 'id',
+				'file_id' => 'file_id',
+				'name' => 'name',
+				'cond' => 'cond',
+				'is_private' => 'is_private',
+				'is_global' => 'is_global',
+				'tags' => 'tags',
+				'modified' => 'last_modified',
+				'created' => 'created',
+				'status' => 'status'
+		));
+		$table_rule->setRawSelect(array(
+				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name",
+				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__threat')" => "threat",
+				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__author')" => "author_id"
+		));
+		$table_rule->addGroupBy('id');
+		$table_rule->addOrderBy(new QueryOrderBy('modified', 'DESC', True));		
 		
-		if ( $file_id != -1 && is_integer( $file_id ) ) {
-			$query = $query . " WHERE r.file_id = " . strval($file_id);
+		if ( $file_id != -1 ) {
+			$table_rule->addWhere(new QueryWhere('file_id', $this->escape_string($file_id), '=', 'int'));
 		}
-		if ( $limit != -1 && is_integer( $file_id ) ) {
-			$query = $query . " LIMIT " . strval($limit);
+		if ( $status == self::status_recyclebin ) {
+			$table_rule->addWhere(new QueryWhere('status', self::status_recyclebin, '=', 'text'));
+		}
+		else if ( $status == self::status_not_recyclebin ) {
+			$table_rule->addWhere(new QueryWhere('status', self::status_recyclebin, '<>', 'text'));
+		}
+		if ( $limit != -1 ) {
+			$queryobj->setLimits(0, $this->escape_string($limit));
 		}
 		
-		$stmt = $this->mysqli->prepare($query);
-		$stmt->execute();
-		$stmt->bind_result($id, $rule_file_id, $name, $condition, $is_private, $is_global, $tags, $modified, $created, $rule_file_name, $threat, $author_id);
-		$results = array();
-		while ($stmt->fetch()) {
-			$tags_exploded = array_filter(explode(',', $tags));	
-			$results[] = array(
-				'id' => $id, 'file_id' => $rule_file_id, 'name' => $name, 'cond' => $condition, 'is_private' => $is_private, 'is_global' => $is_global, 
-				'tags' => $tags_exploded, 'last_modified' => $modified, 'created' => $created, 'file_name' => $rule_file_name, 'threat' => $threat, 'author_id' => $author_id
-			);
+		$queryobj->addTable($table_rule);
+		$results = $this->Execute($queryobj);
+		foreach($results as &$result)
+		{
+			$result["tags"] = array_filter(explode(',', $result["tags"]));
 		}
-		$stmt->close();		
 		return $results;
 	}
 	
@@ -283,7 +303,8 @@ class YEdDatabase
 				'is_global' => 'is_global',
 				'tags' => 'tags',
 				'modified' => 'last_modified',
-				'created' => 'created'				
+				'created' => 'created',
+				'status' => 'status'
 		));
 		$table_rule->setRawSelect(array(
 				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name",
@@ -317,6 +338,7 @@ class YEdDatabase
 			$queryobj->addJoinTable($table_strings);
 			
 			$table_rule->addWhere(new QueryWhere('cond', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str'));
+			$table_rule->addWhere(new QueryWhere('status', self::status_recyclebin, '<>', 'text'));
 		}
 		else 
 		{
@@ -367,11 +389,12 @@ class YEdDatabase
 			if ( isset($params->condition) && $params->condition != -1 ) {
 				$table_rule->addWhere(new QueryWhere('cond', '%' . $this->escape_string($params->condition) . '%', 'LIKE', 'str'));
 			}
+			$table_rule->addWhere(new QueryWhere('status', self::status_recyclebin, '<>', 'text'));
 		}
 		
 		// Common filters
-		if ( isset($params->limit) && $params->limit != -1 && is_integer( $params->limit ) ) {
-			$queryobj->setLimits(0, $this->$params->limit);
+		if ( isset($params->limit) && $params->limit != -1 ) {
+			$queryobj->setLimits(0, $this->escape_string($this->$params->limit));
 		}
 		
 		$queryobj->addTable($table_rule);
@@ -460,6 +483,28 @@ class YEdDatabase
 	{
 		$stmt = $this->mysqli->prepare("UPDATE rule SET name=?, modified=NOW() WHERE id=?");
 		$stmt->bind_param("si", $rule_name, $rule_id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function MoveRuleToRecycleBin($rule_id) 
+	{
+		$status = self::status_recyclebin;
+		$stmt = $this->mysqli->prepare("UPDATE rule SET status=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("si", $status, $rule_id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function RestoreRule($rule_id) 
+	{
+		$status = self::status_draft;
+		$stmt = $this->mysqli->prepare("UPDATE rule SET status=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("si", $status, $rule_id);
 		$stmt->execute();
 		$success = $this->mysqli->affected_rows > 0;
 		$stmt->close();
@@ -643,6 +688,45 @@ class YEdDatabase
 	
 	//=========================================================
 	
+	public function AddToHistory($item)
+	{	
+		$stmt = $this->mysqli->prepare("INSERT INTO history (user,date,action,item_id,item_type,item_name,item_value,item_old_value) VALUES (?,NOW(),?,?,?,?,?,?)");
+		$stmt->bind_param("isissss", $item->user, $item->action, $item->item_id, $item->item_type, $item->item_name, $item->item_value, $item->item_oldvalue);
+		$stmt->execute();
+		$stmt->close();
+	}
+	
+	public function ClearHistory()
+	{	
+		$stmt = $this->mysqli->prepare("DELETE FROM history");
+		$stmt->execute();
+		$stmt->close();
+		return True;
+	}
+	
+	public function GetHistory($limit = -1) 
+	{
+		$query = "SELECT id,user,date,action,item_id,item_type,item_name,item_value,item_old_value FROM history";	
+		if ( $limit != -1 ) {
+			$query = $query . " LIMIT " . $this->escape_string($limit);
+		}
+		
+		$stmt = $this->mysqli->prepare($query);
+		$stmt->execute();
+		$stmt->bind_result($id,$user,$date,$action,$item_id,$item_type,$item_name,$item_value,$item_old_value);
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array(
+				'id' => $id, 'user' => $user, 'date' => $date, 'action' => $action, 'item_id' => $item_id, 'item_type' => $item_type, 'item_name' => $item_name, 
+				'item_value' => $item_value, 'item_old_value' => $item_old_value					
+			);
+		}
+		$stmt->close();		
+		return $results;
+	}
+	
+	//=========================================================
+	
 	public function GetTags() 
 	{
 		$stmt = $this->mysqli->prepare("SELECT tags FROM rule WHERE tags <> ''");
@@ -700,6 +784,37 @@ class YEdDatabase
 		$results = array();
 		while ($stmt->fetch()) {
 			$results[] = array('date' => $date, 'count' => $count);
+		}
+		$stmt->close();	
+		return $results;
+	}
+	
+	public function SearchThreat($request)
+	{
+		$meta_name = '__threat';
+		$meta_value = $request . '%';
+		$stmt = $this->mysqli->prepare("SELECT value FROM rule_metas WHERE name = ? AND value LIKE ? GROUP BY value");
+		$stmt->bind_param("ss", $meta_name, $meta_value);
+		$stmt->execute();
+		$stmt->bind_result($value);
+		$results = array();
+		if ($stmt->fetch()) {
+			$results[] = $value;
+		}
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function SearchRuleName($request)
+	{
+		$rule_name = $request . '%';
+		$stmt = $this->mysqli->prepare("SELECT id,name FROM rule WHERE name LIKE ?");
+		$stmt->bind_param("s", $rule_name);
+		$stmt->execute();
+		$stmt->bind_result($id, $name);
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array('id' => $id, 'name' => $name);
 		}
 		$stmt->close();	
 		return $results;
@@ -776,7 +891,8 @@ class YEdDatabase
 		  `is_global` int(11) NOT NULL DEFAULT '0',
 		  `tags` text NOT NULL,
 		  `created` datetime NOT NULL,
-		  `modified` datetime NOT NULL
+		  `modified` datetime NOT NULL,
+  		  `status` varchar(10) NOT NULL DEFAULT 'draft'
 		) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 		";
 		
@@ -1044,6 +1160,66 @@ class YEdDatabase
 		else
 		{
 			echo "<p>Error constructing file metas table increment.</p>";
+			$success = false;
+		}
+		
+		//=========================================
+		
+		$history_sql = "
+		CREATE TABLE `history` (
+		  `id` int(11) NOT NULL,
+		  `user` int(11) NOT NULL,
+		  `date` datetime NOT NULL,
+		  `action` text NOT NULL,
+		  `item_id` int(11) NOT NULL,
+		  `item_type` text NOT NULL,
+		  `item_name` text NOT NULL,
+		  `item_value` longtext NOT NULL,
+		  `item_old_value` longtext NOT NULL
+		) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+		";
+		
+		$stmt = $this->mysqli->prepare($history_sql);
+		if($stmt->execute())
+		{
+			echo "<p>history table created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing history table.</p>";
+			$success = false;
+		}
+		
+		$history_sql = "
+		ALTER TABLE `history`
+		  ADD PRIMARY KEY (`id`),
+		  ADD KEY `date` (`date`);
+		";	
+		
+		$stmt = $this->mysqli->prepare($history_sql);
+		if($stmt->execute())
+		{
+			echo "<p>history table index created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing history table index.</p>";
+			$success = false;
+		}
+		
+		$history_sql = "
+		ALTER TABLE `history`
+  		MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+		";	
+		
+		$stmt = $this->mysqli->prepare($history_sql);
+		if($stmt->execute())
+		{
+			echo "<p>history table increment created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing history table increment.</p>";
 			$success = false;
 		}
 		
