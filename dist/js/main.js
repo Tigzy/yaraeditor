@@ -95,6 +95,22 @@ function update_rule(rule_id, rule_content, onSuccess, onFailure)
 	});
 }
 
+function check_rule(rule_id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=yarachecksyntax',
+		dataType: 'json',	
+		data: {id: rule_id},	
+		type: 'get',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
 function delete_rule(rule_id, onSuccess, onFailure)
 {
 	return $.ajax({
@@ -307,6 +323,182 @@ function rulename_search(request, onSuccess, onFailure)
 		dataType: 'json',	
 		data: {request: request},	
 		type: 'get',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function add_testset(test_name, rule_id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=addtestset',
+		dataType: 'json',	
+		data: {name: test_name, rule_id: rule_id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function get_testset(id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=gettestset',
+		dataType: 'json',	
+		data: {id: id},	
+		type: 'get',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function update_testset(id, name, rule_id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=updatetestset',
+		dataType: 'json',	
+		data: {id: id, name: name, rule_id: rule_id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function delete_testset(id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=deletetestset',
+		dataType: 'json',	
+		data: {id: id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function add_test(testset_id, type, content, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=addtest',
+		dataType: 'json',	
+		data: {id: testset_id, type: type, content: content},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function get_test(id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=gettest',
+		dataType: 'json',	
+		data: {id: id},	
+		type: 'get',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function update_test(id, type, content, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=updatetest',
+		dataType: 'json',	
+		data: {id: id, type: type, content: content},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function delete_test(id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=deletetest',
+		dataType: 'json',	
+		data: {id: id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function copy_test(id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=copytest',
+		dataType: 'json',	
+		data: {id: id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function run_test(id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=runtest',
+		dataType: 'json',	
+		data: {id: id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function run_testset(id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=runtestset',
+		dataType: 'json',	
+		data: {id: id},	
+		type: 'post',
 		success: function(data, textStatus, xhr) { 
 			if (onSuccess) onSuccess(data, xhr.status); 		
 		},
@@ -610,3 +802,38 @@ function saveRule(rule_id) {
 	);	
 }
 
+function checkRule(rule_id) {
+	Pace.start();
+	
+	// Remove Highlight
+	var preview_editor = ace.edit("preview");	
+	preview_editor.getSession().clearAnnotations();
+	
+	// Ajax post
+	check_rule(rule_id, 
+		function(data, code) {
+			// Read results		
+			if (data.valid) {
+				$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rule is valid.</div>');
+			}
+			else {
+				$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Rule has errors, please review: ' 
+						+ '(line ' + data.error.line + ') ' + data.error.message 
+						+ '</div>');
+				
+				// Highlight error	
+				preview_editor.getSession().setAnnotations([{
+				    row: data.error.line - 1,
+				    column: 0,
+				    text: data.error.message,
+				    type: "error" // also warning and information
+				}]);
+			}
+			
+			Pace.stop();
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to check rule: ' + message + ' (' + error + ')</div>');
+		}		
+	);	
+}

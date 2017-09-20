@@ -96,11 +96,12 @@ scratch. This page gets rid of all links and provides the needed markup only.
 {
 	margin-bottom: 0px !important;
 }
-
-.btn-check {
+.btn-check 
+{
     padding: 4px 10px !important;
     font-size: 14px;
     font-weight: 400;
+}
 </style>
 </head>
 <!--
@@ -138,7 +139,7 @@ desired effect
 			</h1>
 			<ol class="breadcrumb">
 				<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>index.php"><i class="fa fa-home"></i> Home</a></li>				
-				<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>index.php"> Files</a></li>		
+				<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>files.php"> Files</a></li>		
 				<li class="active" id="bc-file-name" data-file-url-base="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>file.php">Unknown</li>
 				<?php if ($rule_id != "") { ?>		
 				<li class="active" id="bc-rule-name"><?php echo $rule_id ?></li>
@@ -186,7 +187,12 @@ desired effect
 			                <label for="ispublic" class="btn btn-default btn-check active" data-toggle='tooltip' title='Make the rule visible from non logged users'>
 			                    Make public
 			                </label>
-			            </div>				
+			            </div>	
+			            <?php if ($rule_id != "") { ?>	
+			            <div class="btn-group pull-right" style="padding-right: 10px">
+							<button id="save-button" class="btn btn-success jsbtn" data-toggle='tooltip' title='Check rule' OnClick="checkRule(<?php echo $rule_id ?>)"><span class="fa fa-check"></span></button>
+						</div>	
+						<?php } ?>		
 						<div class="btn-group pull-right" style="padding-right: 10px">
 							<button id="save-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Save rule' OnClick="saveRule(<?php echo $rule_id ?>)"><span class="fa fa-save"></span></button>
 						</div>
@@ -607,9 +613,9 @@ $(function () {
     	    }
         ],
         buttons: [
-        	{ extend: "create", editor: metas_editor },
-            { extend: "edit",   editor: metas_editor },
-            { extend: "remove", editor: metas_editor }
+        	{ extend: "create", text: '<i class="fa fa-plus"></i>', titleAttr: 'New', editor: metas_editor },
+            { extend: "edit",   text: '<i class="fa fa-pencil"></i>', titleAttr: 'Edit', editor: metas_editor },
+            { extend: "remove", text: '<i class="fa fa-trash"></i>', titleAttr: 'Remove', editor: metas_editor }
         ],
         "createdRow": function ( row, data, index ) {
             ls_metas[ data.DT_RowId ] = data;
@@ -738,9 +744,9 @@ $(function () {
     	    }
         ],
         buttons: [
-        	{ extend: "create", editor: strings_editor },
-            { extend: "edit",   editor: strings_editor },
-            { extend: "remove", editor: strings_editor }
+        	{ extend: "create", text: '<i class="fa fa-plus"></i>', titleAttr: 'New', editor: strings_editor },
+            { extend: "edit",   text: '<i class="fa fa-pencil"></i>', titleAttr: 'Edit', editor: strings_editor },
+            { extend: "remove", text: '<i class="fa fa-trash"></i>', titleAttr: 'Remove', editor: strings_editor }
         ],
         "createdRow": function ( row, data, index ) {
             ls_strings[ data.DT_RowId ] = data;

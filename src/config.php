@@ -9,7 +9,7 @@
 */
  
 $config = array(
-    "version" => "0.4",
+    "version" => "0.5",
     "db" => array(
         "usercake" => array(
             "dbname" => "yed",
@@ -29,30 +29,54 @@ $config = array(
     ),
     "leftnav" => array(
     	array(
-            "name" => "Dashboard",
+            "name" => "Home",
             "link" => "/index.php",
-            "icon" => "fa fa-dashboard",
+            "icon" => "fa fa-home",
         ),
-        array(
-            "name" => "Create",
-            "link" => "/edit.php",
-            "icon" => "fa fa-pencil",
-        ),
-		array(
-            "name" => "Search",
-            "link" => "/search.php",
-            "icon" => "fa fa-search",
-        ),
-		array(
-            "name" => "History",
-            "link" => "/history.php",
-            "icon" => "fa fa-history",
-        ),
-		array(
-            "name" => "Recycle Bin",
-            "link" => "/recycle.php",
-            "icon" => "fa fa-trash",
-        ),
+    	array(
+    		"name" => "Edition",    		
+    		"icon" => "fa fa-pencil",
+    		"link" => 
+    		array(
+    			array(
+		            "name" => "List",
+		            "link" => "/files.php",
+		            "icon" => "fa fa-list",
+		        ),
+		        array(
+		            "name" => "Create",
+		            "link" => "/edit.php",
+		            "icon" => "fa fa-pencil",
+		        ),
+		    	array(
+		            "name" => "Search",
+		            "link" => "/search.php",
+		            "icon" => "fa fa-search",
+		        ),
+    			array(
+		            "name" => "History",
+		            "link" => "/history.php",
+		            "icon" => "fa fa-history",
+		        ),
+    			array(
+		            "name" => "Recycle Bin",
+		            "link" => "/recycle.php",
+		            "icon" => "fa fa-trash",
+		        ),
+		    )
+    	),
+    	array(
+    		"name" => "Tests",    		
+    		"icon" => "fa fa-refresh",
+    		"link" => 
+    		array(
+    			array(
+		            "name" => "List",
+		            "link" => "/tests.php",
+		            "icon" => "fa fa-list",
+		        ),
+		    )
+    	),
     	array(
             "name" => "Statistics",
             "link" => "/stats.php",
@@ -60,11 +84,11 @@ $config = array(
         ),
     ),
 	"modules" => array(
-		/*"mime" => array(
+		"yaradata" => array(
 			"enabled" => True,
-			"class" => "Mime",
-			"priority" => 9,	// MIME is used by other modules
-		),*/
+			"class" => "YaraData",
+			"priority" => 9,
+		),
 	),
 	"available_imports" => array(
 		"pe","elf","cuckoo","magic","hash","math"

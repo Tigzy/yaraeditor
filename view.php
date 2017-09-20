@@ -97,6 +97,12 @@ scratch. This page gets rid of all links and provides the needed markup only.
 	margin-bottom: 0px !important;
 	display: none;
 }
+.btn-check 
+{
+    padding: 4px 10px !important;
+    font-size: 14px;
+    font-weight: 400;
+}
 </style>
 </head>
 <!--
@@ -134,7 +140,7 @@ desired effect
 			</h1>
 			<ol class="breadcrumb">
 				<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>index.php"><i class="fa fa-home"></i> Home</a></li>				
-				<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>index.php"> Files</a></li>		
+				<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>files.php"> Files</a></li>		
 				<li class="active" id="bc-file-name" data-file-url-base="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>file.php">Unknown</li>
 				<?php if ($rule_id != "") { ?>		
 				<li class="active" id="bc-rule-name"><?php echo $rule_id ?></li>
@@ -155,21 +161,21 @@ desired effect
 			        <div class="form-group">
 			            <input type="checkbox" name="isprivate" id="isprivate" autocomplete="off" onclick="return false;" />
 			            <div class="btn-group" style="padding-right: 10px">
-			                <label for="isprivate" class="btn btn-primary">
+			                <label for="isprivate" class="btn btn-primary btn-check">
 			                    <span class="glyphicon glyphicon-ok"></span>
 			                    <span></span>
 			                </label>
-			                <label for="isprivate" class="btn btn-default active">
+			                <label for="isprivate" class="btn btn-default btn-check active">
 			                    Private
 			                </label>
 			            </div>
 			            <input type="checkbox" name="isglobal" id="isglobal" autocomplete="off" onclick="return false;" />
 			            <div class="btn-group" style="padding-right: 10px">
-			                <label for="isglobal" class="btn btn-primary">
+			                <label for="isglobal" class="btn btn-primary btn-check">
 			                    <span class="glyphicon glyphicon-ok"></span>
 			                    <span></span>
 			                </label>
-			                <label for="isglobal" class="btn btn-default active">
+			                <label for="isglobal" class="btn btn-default btn-check active">
 			                    Global
 			                </label>
 			            </div>

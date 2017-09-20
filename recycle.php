@@ -411,8 +411,8 @@ function initRecycleTable()
   	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='View rule' OnClick='rule_open(" + row.id + ")'>"
   	    		+ "<span class='fa fa-eye table-menu'></span>"
   	    		+ "</button> "
-  	    		+ "<button type='button' class='btn btn-sm btn-success' data-toggle='tooltip' title='Restore rule' OnClick='confirm_rule_restore(" + row.id + ")'>"
-  	    		+ "<span class='fa fa-plus table-menu'></span>"
+  	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Restore rule' OnClick='confirm_rule_restore(" + row.id + ")'>"
+  	    		+ "<span class='fa fa-ban table-menu'></span>"
   	    		+ "</button> "		    		
   	    		+ "<button type='button' class='btn btn-sm btn-danger' data-toggle='tooltip' title='Delete rule' OnClick='confirm_rule_delete(" + row.id + ")'>"
   	    		+ "<span class='fa fa-trash table-menu'></span>"
@@ -424,11 +424,13 @@ function initRecycleTable()
       select: true,
       buttons: [
           {
-              text: "Clear Recycle Bin",
+        	  text: "<i class='fa fa-trash'></i>",
+              titleAttr: 'Clear Recycle Bin',
               action: confirm_clear_recycle_bin
           },
           {
-			  text: "Refresh",
+        	  text: "<i class='fa fa-refresh'></i>",
+              titleAttr: 'Refresh',
 			  action: refresh_recycle_bin
           }
       ]

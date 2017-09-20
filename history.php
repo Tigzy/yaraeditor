@@ -84,6 +84,11 @@ scratch. This page gets rid of all links and provides the needed markup only.
 	margin-bottom: 0px !important;
 }
 
+body .modal-dialog 
+{
+	 width: 60%;
+}	
+
 .content
 {
 	min-height: 0px !important;
@@ -429,11 +434,13 @@ function initHistoryTable()
       select: true,
       buttons: [
           {
-              text: "Clear History",
+        	  text: "<i class='fa fa-trash'></i>",
+              titleAttr: 'Clear History',
               action: confirm_clear_history
           },
           {
-			  text: "Refresh",
+        	  text: "<i class='fa fa-refresh'></i>",
+              titleAttr: 'Refresh',
 			  action: refresh_history
           }
         ],

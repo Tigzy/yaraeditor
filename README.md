@@ -4,6 +4,16 @@ yaraeditor-web
 Malware Repository Framework
 Official page: http://www.adlice.com/download/yaraeditorweb/
 
+## Version 0.5
+Added Tests sets page  
+Added Tests set page  
+Added String (ANSI) test item  
+Added String (UNICODE) test item  
+Added Rule syntax check  
+Refactored Recycle bin permissions: Low profile users can only see their items  
+Refactored buttons (added icons)  
+Minor fixes  
+
 ## Version 0.4
 Added user Permissions  
 Added History page  

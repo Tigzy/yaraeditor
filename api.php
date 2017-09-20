@@ -573,18 +573,13 @@ class Rest_Api extends Rest_Rest {
 		$this->validateKey();
 		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
 		
-		$file 				= -1;
-		$file_param			= $this->getParameter('file');
-		if ($file_param) $file = $file_param;
-		
+		$file 				= -1;		
 		$limit 				= -1;
-		$limit_param		= $this->getParameter('limit');
-		if ($limit_param) $limit = $limit_param;
 		
 		// Get results
 		$core 								= $this->getCore();	
 		$data_container 					= new stdClass();
-		$data_container->data 				= $core->GetRules( $file, $limit, YEdDatabase::status_recyclebin );
+		$data_container->data 				= $core->GetRecycleBin( $file, $limit );
 		$data_container->draw 				= 1;
 		$data_container->recordsTotal 		= count($data_container->data);
 		$data_container->recordsFiltered 	= count($data_container->data);
@@ -639,6 +634,295 @@ class Rest_Api extends Rest_Rest {
 		$data = $core->SearchRuleName($request);
 		if (!is_array($data)) {
 			$this->response("unable to search threats",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
+	}
+	
+	public function yarachecksyntax()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$rule_id = $this->getParameter("id");
+		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }
+		
+		$core = $this->getCore();	
+		$data = $core->YaraCheckSyntax($rule_id);
+		if (!$data) {
+			$this->response("unable to check syntax",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
+	}
+	
+	public function addtestset() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$test_name = $this->getParameter("name");
+		if (!$test_name) {$this->response('missing name parameter',400); return false; }	
+		$rule_id = $this->getParameter("rule_id");
+		if (!$rule_id) {$this->response('missing rule_id parameter',400); return false; }	
+		
+		$core = $this->getCore();
+		$id = $core->AddTestSet($test_name, $rule_id);
+		if ($id == 0) {
+			$this->response('Unable to add tests set',406); 
+			return false;
+		}
+		
+		$data 		= new stdClass();
+		$data->id 	= $id;
+		$data->name = $test_name;
+		
+		$this->response(json_encode($data),201);
+	}
+	
+	public function gettestsettable() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+				
+		// Get results
+		$core 								= $this->getCore();	
+		$data_container 					= new stdClass();
+		$data_container->data 				= $core->GetTestSets();
+		$data_container->draw 				= 1;
+		$data_container->recordsTotal 		= count($data_container->data);
+		$data_container->recordsFiltered 	= count($data_container->data);
+		if (!is_array($data_container->data)) {
+			$this->response("unable to get test sets",403);
+			return false;
+		}
+		$this->response(json_encode($data_container),200);
+	}
+	
+	public function gettestset() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$testset_id = $this->getParameter("id");
+		if (is_null($testset_id)) {$this->response('missing id parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();	
+		$data = $core->GetTestSet($testset_id);
+		if (!$data) {
+			$this->response("unable to get test set",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
+	}
+	
+	public function updatetestset() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$id = $this->getParameter("id");
+		if (is_null($id)) {$this->response('missing id parameter',400); return false; }	
+		$test_name = $this->getParameter("name");
+		if (!$test_name) {$this->response('missing name parameter',400); return false; }	
+		$rule_id = $this->getParameter("rule_id");
+		if (!$rule_id) {$this->response('missing rule_id parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();	
+		$success = $core->UpdateTestSet($id, $test_name, $rule_id);
+		if (!$success) {
+			$this->response("unable to update test set",403);
+			return false;
+		}
+		
+		$data 		= new stdClass();
+		$data->id 	= $id;
+		$data->name = $test_name;
+		
+		$this->response(json_encode($data),201);
+	}
+	
+	public function deletetestset() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$testset_id = $this->getParameter("id");
+		if (is_null($testset_id)) {$this->response('missing id parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();
+		if ($core->DeleteTestSet($testset_id)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to delete tests set',406); 
+			return false;
+		}
+	}
+	
+	public function addtest() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$testset_id = $this->getParameter("id");
+		if (!$testset_id) {$this->response('missing id parameter',400); return false; }	
+		$type = $this->getParameter("type");
+		if (!$type) {$this->response('missing type parameter',400); return false; }	
+		$content = $this->getParameter("content");
+		if (!$content) {$this->response('missing content parameter',400); return false; }	
+		
+		$core = $this->getCore();
+		$id = $core->AddTest($testset_id, $type, $content);
+		if ($id == 0) {
+			$this->response('Unable to add test',406); 
+			return false;
+		}
+		
+		$data 		= new stdClass();
+		$data->id 	= $id;
+		
+		$this->response(json_encode($data),201);
+	}
+	
+	public function getteststable() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+				
+		$testset_id = $this->getParameter("id");
+		if (!$testset_id) {$this->response('missing id parameter',400); return false; }	
+		
+		// Get results
+		$core 								= $this->getCore();	
+		$data_container 					= new stdClass();
+		$data_container->data 				= $core->GetTests($testset_id);
+		$data_container->draw 				= 1;
+		$data_container->recordsTotal 		= count($data_container->data);
+		$data_container->recordsFiltered 	= count($data_container->data);
+		if (!is_array($data_container->data)) {
+			$this->response("unable to get tests",403);
+			return false;
+		}
+		$this->response(json_encode($data_container),200);
+	}
+	
+	public function gettest() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$test_id = $this->getParameter("id");
+		if (is_null($test_id)) {$this->response('missing id parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();	
+		$data = $core->GetTest($test_id);
+		if (!$data) {
+			$this->response("unable to get test",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
+	}
+	
+	public function updatetest() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$id = $this->getParameter("id");
+		if (is_null($id)) {$this->response('missing id parameter',400); return false; }	
+		$type = $this->getParameter("type");
+		if (!$type) {$this->response('missing type parameter',400); return false; }	
+		$content = $this->getParameter("content");
+		if (!$content) {$this->response('missing content parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();	
+		$success = $core->UpdateTest($id, $type, $content);
+		if (!$success) {
+			$this->response("unable to update test",403);
+			return false;
+		}
+		
+		$data 		= new stdClass();
+		$data->id 	= $id;
+		
+		$this->response(json_encode($data),201);
+	}
+	
+	public function deletetest() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$test_id = $this->getParameter("id");
+		if (is_null($test_id)) {$this->response('missing id parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();
+		if ($core->DeleteTest($test_id)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to delete test',406); 
+			return false;
+		}
+	}
+	
+	public function copytest() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$test_id = $this->getParameter("id");
+		if (is_null($test_id)) {$this->response('missing id parameter',400); return false; }
+		
+		$core 		= $this->getCore();		
+		$id 		= $core->CopyTest($test_id);
+		if ($id == 0) {
+			$this->response('Unable to copy test',406); 
+			return false;
+		}
+		
+		$data 		= new stdClass();
+		$data->id 	= $id;
+		
+		$this->response(json_encode($data),201);
+	}
+	
+	public function runtest() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$test_id = $this->getParameter("id");
+		if (is_null($test_id)) {$this->response('missing id parameter',400); return false; }
+		
+		$core 		= $this->getCore();		
+		$data 		= $core->RunTest($test_id);
+		if (!$data) {
+			$this->response("unable to run test",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
+	}
+	
+	public function runtestset() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$set_id = $this->getParameter("id");
+		if (is_null($set_id)) {$this->response('missing id parameter',400); return false; }
+		
+		$core 		= $this->getCore();		
+		$data 		= $core->RunTestSet($set_id);
+		if (!$data) {
+			$this->response("unable to run test",403);
 			return false;
 		}
 		$this->response(json_encode($data),200);

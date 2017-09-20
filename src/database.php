@@ -16,6 +16,10 @@ class YEdDatabase
 	const status_all 				= 'all';			// pseudo status
 	const status_not_recyclebin 	= 'notrecyclebin';	// pseudo status
 	
+	const status_passed = 'passed';
+	const status_failed = 'failed';
+	const status_idle 	= 'idle';
+	
 	public function __construct($db_host, $db_name, $db_user, $db_pass) 
 	{
 		$this->host 		= $db_host;
@@ -109,7 +113,7 @@ class YEdDatabase
 	{
 		$stmt = $this->mysqli->prepare("SELECT vf.id, vf.name, vf.imports, vf.modified, vf.created, count(r.id) as count 
 				FROM virtual_file vf 
-				LEFT JOIN rule r on r.file_id = vf.id
+				LEFT JOIN rule r on r.file_id = vf.id AND r.status<> \"" . self::status_recyclebin . "\" 
 				GROUP BY vf.id, vf.name, vf.imports, vf.modified, vf.created");
 		$stmt->execute();
 		$stmt->bind_result($id, $name, $imports, $modified, $created, $count);
@@ -243,7 +247,7 @@ class YEdDatabase
 		return (int) $count;
 	}
 	
-	public function GetRules($file_id = -1, $limit = -1, $status = self::status_not_recyclebin) 
+	public function GetRules($file_id = -1, $limit = -1, $status = self::status_not_recyclebin, $user = -1) 
 	{
 		$queryobj = new QueryBuilder();
 		$table_rule = new QueryTable('rule');
@@ -267,6 +271,9 @@ class YEdDatabase
 		$table_rule->addGroupBy('id');
 		$table_rule->addOrderBy(new QueryOrderBy('modified', 'DESC', True));		
 		
+		if ( $user != -1 ) {
+			$table_rule->addWhere(new QueryWhere('author_id', $this->escape_string($user), '=', 'int'));
+		}
 		if ( $file_id != -1 ) {
 			$table_rule->addWhere(new QueryWhere('file_id', $this->escape_string($file_id), '=', 'int'));
 		}
@@ -808,7 +815,7 @@ class YEdDatabase
 	public function SearchRuleName($request)
 	{
 		$rule_name = $request . '%';
-		$stmt = $this->mysqli->prepare("SELECT id,name FROM rule WHERE name LIKE ?");
+		$stmt = $this->mysqli->prepare("SELECT id,name FROM rule WHERE name LIKE ? AND status <> \"" . self::status_recyclebin . "\"");
 		$stmt->bind_param("s", $rule_name);
 		$stmt->execute();
 		$stmt->bind_result($id, $name);
@@ -819,6 +826,195 @@ class YEdDatabase
 		$stmt->close();	
 		return $results;
 	}
+	
+	//===============================================
+	
+	public function AddTestSet($name, $rule_id, $author) 
+	{
+		$stmt = $this->mysqli->prepare("INSERT INTO testset (rule_id, author, name, created, modified) VALUES (?, ?, ?, NOW(), NOW())");
+		$stmt->bind_param("iss", $rule_id, $author, $name);
+		$stmt->execute();
+		$id = $this->mysqli->insert_id;
+		$stmt->close();		
+		return $id;
+	}
+	
+	public function GetTestSets() 
+	{		
+		$stmt = $this->mysqli->prepare("SELECT t.id, t.rule_id, t.author, r.name as rule_name, t.name, t.created, t.modified, t.status 
+				FROM testset t
+				LEFT JOIN rule r on r.id = t.rule_id"
+		);
+		$stmt->execute();
+		$stmt->bind_result($id, $rule_id, $author, $rule_name, $name, $created, $modified, $status);
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array('id' => $id, 'rule_id' => $rule_id, 'author' => $author, 'rule_name' => $rule_name, 'name' => $name, 'created' => $created, 'last_modified' => $modified, 'status' => $status);
+		}
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function GetTestSet($id) 
+	{		
+		$stmt = $this->mysqli->prepare("SELECT t.rule_id, t.author, r.name as rule_name, t.name, t.created, t.modified, t.status 
+				FROM testset t
+				LEFT JOIN rule r on r.id = t.rule_id 
+				WHERE t.id = ?"
+		);
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		$stmt->bind_result($rule_id, $author, $rule_name, $name, $created, $modified, $status);
+		$stmt->fetch();
+		$results = array('id' => $id, 'rule_id' => $rule_id, 'author' => $author, 'rule_name' => $rule_name, 'name' => $name, 'created' => $created, 'last_modified' => $modified, 'status' => $status);
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function UpdateTestSet($id, $name, $rule_id) 
+	{
+		$stmt = $this->mysqli->prepare("UPDATE testset SET rule_id=?, name=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("isi", $rule_id, $name, $id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function SetTestSetStatus($id, $status) 
+	{
+		$stmt = $this->mysqli->prepare("UPDATE testset SET status=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("si", $status, $id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function DeleteTestSet($id) 
+	{		
+		$stmt = $this->mysqli->prepare("DELETE FROM testset WHERE id = ?");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();		
+		return $success;
+	}
+	
+	public function AddTest($testset_id, $type, $content) 
+	{
+		$stmt = $this->mysqli->prepare("INSERT INTO test (set_id, created, modified, type, content, results) VALUES (?, NOW(), NOW(), ?, ?, '')");
+		$stmt->bind_param("iss", $testset_id, $type, $content);
+		$stmt->execute();
+		$id = $this->mysqli->insert_id;
+		$stmt->close();		
+		return $id;
+	}
+	
+	public function GetTests($testset_id) 
+	{		
+		$stmt = $this->mysqli->prepare("SELECT t.id, t.set_id, s.name as set_name, t.created, t.modified, t.status, t.type, t.content, t.results 
+				FROM test t
+				LEFT JOIN testset s on s.id = t.set_id
+				WHERE t.set_id = ?"
+		);
+		$stmt->bind_param("i", $testset_id);
+		$stmt->execute();
+		$stmt->bind_result($id, $set_id, $set_name, $created, $modified, $status, $type, $content, $test_results);
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array('id' => $id, 'set_id' => $set_id, 'set_name' => $set_name, 'created' => $created, 'last_modified' => $modified, 'status' => $status, 'type' => $type, 'content' => $content, 'results' => json_decode($test_results));
+		}
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function GetTestsToUpdate() 
+	{		
+		$status = self::status_idle;
+		$stmt = $this->mysqli->prepare("SELECT t.id, t.set_id, s.name as set_name, t.created, t.modified, t.status, t.type, t.content, t.results 
+				FROM test t
+				LEFT JOIN testset s on s.id = t.set_id
+				WHERE t.status = ?"
+		);
+		$stmt->bind_param("s", $status);
+		$stmt->execute();
+		$stmt->bind_result($id, $set_id, $set_name, $created, $modified, $status, $type, $content, $test_results);
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array('id' => $id, 'set_id' => $set_id, 'set_name' => $set_name, 'created' => $created, 'last_modified' => $modified, 'status' => $status, 'type' => $type, 'content' => $content, 'results' => json_decode($test_results));
+		}
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function GetTest($id) 
+	{		
+		$stmt = $this->mysqli->prepare("SELECT t.id, t.set_id, s.name as set_name, t.created, t.modified, t.status, t.type, t.content, t.results 
+				FROM test t
+				LEFT JOIN testset s on s.id = t.set_id
+				WHERE t.id = ?"
+		);
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		$stmt->bind_result($id, $set_id, $set_name, $created, $modified, $status, $type, $content, $test_results);
+		$stmt->fetch();
+		$results = array('id' => $id, 'set_id' => $set_id, 'set_name' => $set_name, 'created' => $created, 'last_modified' => $modified, 'status' => $status, 'type' => $type, 'content' => $content, 'results' => json_decode($test_results));
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function UpdateTest($id, $type, $content) 
+	{
+		$stmt = $this->mysqli->prepare("UPDATE test SET type=?, content=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("ssi", $type, $content, $id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function SetTestResults($id, $results) 
+	{
+		$stmt = $this->mysqli->prepare("UPDATE test SET results=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("si", $results, $id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function SetTestStatus($id, $status) 
+	{
+		$stmt = $this->mysqli->prepare("UPDATE test SET status=?, modified=NOW() WHERE id=?");
+		$stmt->bind_param("si", $status, $id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function DeleteTest($id) 
+	{		
+		$stmt = $this->mysqli->prepare("DELETE FROM test WHERE id = ?");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();		
+		return $success;
+	}
+	
+	public function CopyTest($id) 
+	{
+		$stmt = $this->mysqli->prepare("INSERT INTO test (set_id, created, modified, status, type, content, results) SELECT set_id, NOW(), NOW(), status, type, content, '' FROM test WHERE id=?");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		$id = $this->mysqli->insert_id;
+		$stmt->close();		
+		return $id;
+	}
+	
+	//===============================================
 	
 	public function Create()
 	{
@@ -1224,6 +1420,123 @@ class YEdDatabase
 		}
 		
 		//=========================================
+		
+		$test_sql = "
+		CREATE TABLE `test` (
+		  `id` int(11) NOT NULL,
+		  `set_id` int(11) NOT NULL,
+		  `created` datetime NOT NULL,
+		  `modified` datetime NOT NULL,
+		  `status` varchar(10) NOT NULL DEFAULT 'idle',
+		  `type` varchar(15) NOT NULL,
+		  `content` longtext NOT NULL,
+		  `results` longtext NOT NULL
+		) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+		";
+		
+		$stmt = $this->mysqli->prepare($test_sql);
+		if($stmt->execute())
+		{
+			echo "<p>test table created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing test table.</p>";
+			$success = false;
+		}
+		
+		$test_sql = "
+		ALTER TABLE `test`
+		  ADD PRIMARY KEY (`id`),
+		  ADD KEY `set_id` (`set_id`);
+		";	
+		
+		$stmt = $this->mysqli->prepare($test_sql);
+		if($stmt->execute())
+		{
+			echo "<p>test table index created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing test table index.</p>";
+			$success = false;
+		}
+		
+		$test_sql = "
+		ALTER TABLE `test`
+  		MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+		";	
+		
+		$stmt = $this->mysqli->prepare($test_sql);
+		if($stmt->execute())
+		{
+			echo "<p>test table increment created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing test table increment.</p>";
+			$success = false;
+		}
+		
+		//=========================================		
+		
+		$testset_sql = "
+		CREATE TABLE `testset` (
+		  `id` int(11) NOT NULL,
+		  `rule_id` int(11) NOT NULL,
+		  `author` int(11) NOT NULL,
+		  `name` text NOT NULL,
+		  `created` datetime NOT NULL,
+		  `modified` datetime NOT NULL,
+		  `status` varchar(10) NOT NULL DEFAULT 'idle'
+		) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+		";
+		
+		$stmt = $this->mysqli->prepare($testset_sql);
+		if($stmt->execute())
+		{
+			echo "<p>testset table created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing testset table.</p>";
+			$success = false;
+		}
+		
+		$testset_sql = "
+		ALTER TABLE `testset`
+		  ADD PRIMARY KEY (`id`),
+		  ADD UNIQUE KEY `rule_id` (`rule_id`);
+		";	
+		
+		$stmt = $this->mysqli->prepare($testset_sql);
+		if($stmt->execute())
+		{
+			echo "<p>testset table index created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing testset table index.</p>";
+			$success = false;
+		}
+		
+		$testset_sql = "
+		ALTER TABLE `testset`
+  		MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+		";	
+		
+		$stmt = $this->mysqli->prepare($testset_sql);
+		if($stmt->execute())
+		{
+			echo "<p>testset table increment created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing testset table increment.</p>";
+			$success = false;
+		}
+		
+		//=========================================		
 		
 		return $success;
 	}

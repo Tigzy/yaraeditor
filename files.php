@@ -11,18 +11,6 @@ scratch. This page gets rid of all links and provides the needed markup only.
   $user = UCUser::getCurrentUser();
 ?> 
 
-<?php 
-  $file_id = "";
-  if (isset($_GET["id"])) {
-  	$file_id = $_GET["id"];
-  }
-  
-  if (empty($file_id)) {
-  	header("HTTP/1.0 404 Not Found");
-  	exit;
-  }
-?>
-
 <html>
 <head>
   <meta charset="utf-8">
@@ -98,12 +86,11 @@ desired effect
     <!-- Content Header (Page header) -->
     <section class="content-header">            
     	<h1>
-			File <small>Detailed View</small>
+			Files <small>Detailed View</small>
 		</h1>
 		<ol class="breadcrumb">
 			<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>index.php"><i class="fa fa-home"></i> Home</a></li>
 			<li><a href="<?php echo $GLOBALS["config"]["urls"]["baseUrl"]; ?>files.php"> Files</a></li>
-			<li class="active" id="bc-file-name"><?php echo $file_id ?></li>
 		</ol>
     </section>
 
@@ -112,71 +99,19 @@ desired effect
 
       <div id='alert'></div>
       <!-- Your Page Content Here -->
-      <div id='content'>  
-        <!-- Horizontal Form -->
-        <div class="box box-primary">
-          <div class="box-header with-border">
-            <h3 class="box-title">File Information</h3>
-            <div class="btn-group pull-right" style="padding-right: 10px">
-				<button id="save-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Save file' OnClick="file_update(<?php echo $file_id ?>)"><span class="fa fa-save"></span></button>
-			</div>	
-            <div class="btn-group pull-right" style="padding-right: 10px">
-				<button id="export-button" class="btn btn-primary jsbtn" data-toggle='tooltip' title='Export file' OnClick="file_export(<?php echo $file_id ?>)"><span class="fa fa-download"></span></button>
-			</div>				
-          </div>             
-          <div class="box-body">            
-          	<div class="row">			   
-				<section class="col-lg-12 connectedSortable">	
-					<div class="row" style="padding-bottom: 10px">
-						<div class="control-group col col-lg-12" style="padding-bottom: 10px;">
-							<div class="input-group">
-								<span class="input-group-addon" id="file-id"><span class="fa fa-hashtag" style="padding-right: 10px"></span>File ID</span>
-								<input type="text" id="file-id" class="form-control" placeholder="" aria-describedby="file-id" readonly>
-							</div>
-						</div>
-						<div class="control-group col col-lg-12" style="padding-bottom: 10px;">
-							<div class="input-group">
-								<span class="input-group-addon" id="file-name"><span class="fa fa-asterisk" style="padding-right: 10px"></span>File name</span>
-								<input type="text" id="file-name" class="form-control" placeholder="" aria-describedby="file-name">
-							</div>
-						</div>
-						<div class="control-group col col-lg-12" style="padding-bottom: 10px;">
-							<div class="input-group">
-								<span class="input-group-addon" id="file-last-modified"><span class="fa fa-calendar" style="padding-right: 10px"></span>Last Modified</span>
-								<input type="text" id="file-last-modified" class="form-control" placeholder="" aria-describedby="file-last-modified" readonly>
-							</div>
-						</div>
-						<div class="control-group col col-lg-12" style="padding-bottom: 10px;">
-							<div class="input-group">
-								<span class="input-group-addon" id="file-imports"><span class="fa fa-plug" style="padding-right: 10px"></span>Imports</span>
-								<select class="form-control" id="file-imports" multiple="">
-							    	<?php foreach($GLOBALS["config"]["available_imports"] as $import) { ?>		
-							      	<option value="<?php echo $import ?>"><?php echo $import ?></option>
-							      	<?php } ?>
-							    </select> 
-							</div>
-						</div>
-					</div>	
-				</section>
-			</div>
-          </div>
-          <!-- /.box-body -->          
-        </div>
-      </div>
-                     
+      <div id='content'>                 
         <!-- Horizontal Form -->
         <div class="box box-info">
           <div class="box-header with-border">
-            <h3 class="box-title">Rules</h3>
+            <h3 class="box-title">Files</h3>
           </div>             
           <div class="box-body">
-            <table id="rules" class="table table-bordered table-striped dt-responsive" width="100%" cellspacing="0">
+            <table id="files" class="table table-bordered table-striped dt-responsive" width="100%" cellspacing="0">
               <thead>
               <tr>
-                <th>Rule</th>
-                <th>Author</th>
-                <th>Threat</th>
-                <th>Tags</th>                         
+                <th>File</th>
+                <th>Imports</th>
+                <th>Rules</th>                
                 <th>Last Modified</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -200,14 +135,14 @@ desired effect
 			        <fieldset>
 			          <!-- Text input-->
 			          <div id="confirm-file-name" class="form-group">
-			            <label class="col-sm-1 control-label" for="textinput">Rule name</label>
+			            <label class="col-sm-1 control-label" for="textinput">File name</label>
 			            <div class="col-sm-10">
-			              <input type="text" id="new-file-name" placeholder="MyRule" class="form-control">
+			              <input type="text" id="new-file-name" placeholder="MyFile" class="form-control">
 			            </div>
 			          </div>	
 			          <span id="modal-message"></span>			          			
 			        </fieldset>		        
-			      </form>
+			      </form>	
 	            </div>
 	            <div class="modal-footer">
 	                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
@@ -217,6 +152,45 @@ desired effect
 	    </div>
 	  </div>
 	  
+	  <div class="modal fade" id="edit-file" tabindex="-1" role="dialog" aria-labelledby="myModalLabel2" aria-hidden="true">
+	    <div class="modal-dialog">
+	        <div class="modal-content">
+	            <div class="modal-header">
+			    </div>
+	            <div class="modal-body">
+			      <form class="form-horizontal" role="form">
+			        <fieldset>
+			          <!-- Text input-->
+			          <div class="form-group">
+			            <label class="col-sm-1 control-label" for="textinput">Name</label>
+			            <div class="col-sm-10">
+			              <input type="text" id="new-file-name" placeholder="MyFile" class="form-control">
+			            </div>
+			          </div>				          			
+			        </fieldset>			        
+			        <fieldset>
+			          <!-- Text input-->
+			          <div class="form-group">			            	          	
+			          	<label class="col-sm-1 control-label" for="textinput">Imports</label>
+					    <div class="col-sm-10">
+						    <select class="form-control" id="file-imports" multiple="">
+						    	<?php foreach($GLOBALS["config"]["available_imports"] as $import) { ?>		
+						      	<option value="<?php echo $import ?>"><?php echo $import ?></option>
+						      	<?php } ?>
+						    </select> 
+					    </div>
+			          </div>				          			
+			        </fieldset>			        
+			      </form>				      
+	            </div>
+	            <div class="modal-footer">
+	                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+	                <a class="btn btn-danger btn-ok" OnClick="">Confirm</a>
+	            </div>
+	        </div>
+	    </div>
+	  </div>
+
     </section>
     <!-- /.content -->
   </div>
@@ -268,26 +242,52 @@ desired effect
 <script src="dist/js/main.js"></script>
       
 <script>
-  function file_update(id)
+  function file_delete(id)
   {
-	  var name = $('input#file-name').val();
-	  var imports = $('select#file-imports').val();
-	  
 	  Pace.start();
-	  update_file( id, name, imports,
+	  delete_file(id, 
 		function(data, code) {		
-		  	$('#edit-file').modal('hide');	
-		  	
-			var file_name 	= data.name;
-			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> File ' + file_name + ' updated.</div>');
+		    $('#confirm-action').modal('hide');	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> File removed.</div>');
 			
 			Pace.stop();
+			refresh_files();
 		},
 		function(message, error) {
-			$('#edit-file').modal('hide');
-			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to update file</div>');
+			$('#confirm-action').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove file</div>');
 		}		
-	  );
+	  );	
+  }
+
+  function file_copy(id)
+  {
+	  var file_name = $('#confirm-action').find('#new-file-name').val();	  
+	  
+	  Pace.start();
+	  copy_file(id, file_name,
+		function(data, code) {		
+		    $('#confirm-action').modal('hide');			    		    
+
+		    if (file_name == "") {
+				file_name = data.name;
+			}
+
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> File ' + file_name + ' created.</div>');
+					    
+			Pace.stop();
+			refresh_files();
+		},
+		function(message, error) {
+			$('#confirm-action').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to copy file</div>');
+		}		
+	  );	
+  }
+
+  function file_open(id)
+  {
+	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>file.php?id=" + id);
   }
 
   function file_export(id)
@@ -298,140 +298,128 @@ desired effect
 		  	Pace.stop();
 		},
 		function(message, error) {
+			$('#edit-file').modal('hide');
 			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to export file</div>');
 		}		
 	  );
   }
-  
-  function rule_delete(id)
-  {
-	  Pace.start();
-	  delete_rule(id, 
-		function(data, code) {		
-		    $('#confirm-action').modal('hide');	
-			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rule moved into recycle bin.</div>');
-			
-			Pace.stop();
-			refresh_rules();
-		},
-		function(message, error) {
-			$('#confirm-action').modal('hide');
-			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to move rule into recycle bin</div>');
-		}		
-	  );	
-  }
 
-  function rule_copy(id)
+  function file_add()
   {
-	  var rule_name = $('#confirm-action').find('#new-file-name').val();
+	  var name = $('#edit-file').find('#new-file-name').val();
+	  var imports = $('#file-imports').val();
 	  
 	  Pace.start();
-	  copy_rule(id, rule_name,
+	  add_file( name, imports,
 		function(data, code) {		
-		    $('#confirm-action').modal('hide');	
-
-		    if (rule_name == "") {
-		    	rule_name = data.name;
-			}
-			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rule ' + rule_name + ' created.</div>');
-					    
+		  	$('#edit-file').modal('hide');	
+		  	
+			var file_name 	= data.name;
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> File ' + file_name + ' created.</div>');
+			
 			Pace.stop();
-			refresh_rules();
+			refresh_files();
 		},
 		function(message, error) {
-			$('#confirm-action').modal('hide');
-			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to copy rule</div>');
-		}		
-	  );	
-  }
-
-  function fill_information()
-  {
-	  Pace.start();
-	  get_file(<?php echo $file_id; ?>,
-		function(data, code) {		
-		    $('#confirm-action').modal('hide');	
-
-		    $('li#bc-file-name').text(data.name);
-		    $('input#file-name').val(data.name);	
-		    $('input#file-id').val(data.id);		
-		    $('input#file-last-modified').val(data.last_modified);
-
-		    $.each(data.imports, function(i,e){
-		        $("select#file-imports option[value='" + e + "']").prop("selected", true);
-		    });		
-		    
-			Pace.stop();
-			refresh_rules();
-		},
-		function(message, error) {
-			$('#confirm-action').modal('hide');
-			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable find file data</div>');
+			$('#edit-file').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to add file</div>');
 		}		
 	  );
   }
 
-  function rule_open(id)
+  function file_update(id)
   {
-	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + id);
-  }
-
-  function rule_export(id)
-  {
+	  var name = $('#edit-file').find('#new-file-name').val();
+	  var imports = $('#file-imports').val();
+	  
 	  Pace.start();
-	  export_rule( id,
+	  update_file( id, name, imports,
 		function(data, code) {		
-		  	Pace.stop();
+		  	$('#edit-file').modal('hide');	
+		  	
+			var file_name 	= data.name;
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> File ' + file_name + ' updated.</div>');
+			
+			Pace.stop();
+			refresh_files();
 		},
 		function(message, error) {
-			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to export rule</div>');
+			$('#edit-file').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to update file</div>');
 		}		
 	  );
   }
 
-  function rule_add()
-  {
-	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>edit.php?file_id=" + <?php echo $file_id ?>);
-  }
-
-  function rule_update(id)
-  {
-	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>edit.php?id=" + id);
-  }
-
-  function confirm_rule_copy(id)
+  function confirm_file_copy(id)
   {
 	  $('#confirm-action').find('#confirm-file-name').show();
 	  $('#confirm-action').find('#new-file-name').val("");	
-	  $('#confirm-action').find('.modal-header').html("Rule copy");
-	  $('#confirm-action').find('#modal-message').html("This will copy the rule, do you want to proceed?");	  
-	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'rule_copy(' + id + ')');
+	  $('#confirm-action').find('.modal-header').html("File copy");
+	  $('#confirm-action').find('#modal-message').html("This will copy the file and ALL THE RULES inside, do you want to proceed?");	  
+	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'file_copy(' + id + ')');
 	  $('#confirm-action').modal('show');
   }
 		  
-  function confirm_rule_delete(id)
+  function confirm_file_delete(id)
   {
 	  $('#confirm-action').find('#confirm-file-name').hide();
 	  $('#confirm-action').find('#new-file-name').val("");	
-	  $('#confirm-action').find('.modal-header').html("Rule removal");
-	  $('#confirm-action').find('#modal-message').html("This will put the rule into recycle bin, do you want to proceed?");	  
-	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'rule_delete(' + id + ')');
+	  $('#confirm-action').find('.modal-header').html("File removal");
+	  $('#confirm-action').find('#modal-message').html("This will remove the file and ALL THE RULES inside, do you want to proceed?");	  
+	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'file_delete(' + id + ')');
 	  $('#confirm-action').modal('show');
   }
 
-  function refresh_rules() 
+  function refresh_files() 
   {
-      $('#rules').DataTable().ajax.reload();
+      $('#files').DataTable().ajax.reload();
+  }
+
+  function show_add_file()
+  {
+	  $('#edit-file').find('.modal-header').html("Add File");
+	  $('#edit-file').find('#new-file-name').val("");
+	  $('#edit-file').find("select#file-imports option:selected").prop("selected", false);
+	  $('#edit-file').find('.btn-ok').attr('OnClick', 'file_add()');
+	  $('#edit-file').modal('show');	
+	  $('#edit-file').find('#new-file-name').focus();  
+  }
+
+  function show_update_file(id)
+  {
+	  Pace.start();
+	  get_file( id,
+		function(data, code) {		
+			Pace.stop();
+
+			$('#edit-file').find('.modal-header').html("Edit File");
+			$('#edit-file').find('#new-file-name').val(data.name);
+			$('#edit-file').find('.btn-ok').attr('OnClick', 'file_update(' + id + ')');
+			$('#edit-file').find("select#file-imports option:selected").prop("selected", false);
+			$.each(data.imports, function(i,e){
+				var item = $('#edit-file').find("select#file-imports option[value='" + e + "']");
+				$('#edit-file').find("select#file-imports option[value='" + e + "']").prop("selected", true);
+		    });				
+			$('#edit-file').modal('show');	
+			$('#edit-file').find('#new-file-name').focus();  
+		},
+		function(message, error) {
+			$('#edit-file').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to get file</div>');
+		}		
+	  );
   }
   
   //============================================
 	  
   var table;
   
-  $(function () {	
-	fill_information();
-		
-	table = $('#rules').DataTable({
+  $(function () {
+    $('#edit-file').on('shown.bs.modal', function () {
+    	$('#edit-file').find('#new-file-name').focus();
+	});
+	
+	table = $('#files').DataTable({
       dom: "Bfrtip",
       paging: true,
       lengthChange: true,
@@ -450,35 +438,21 @@ desired effect
 		  dataType: "json",
 		  url: "api.php",
 		  data: function( data ) {
-			  data.action 	= 'getrules';
-			  data.file		= <?php echo $file_id; ?>;
+			  data.action 	= 'getfilestable';
+			  data.folder	= -1;
 		  },
 	  },   
       columns: [
     	{ 
 	    	data: "name", 
-	    	width: "20%",
+	    	width: "25%",
 	    	render: function (data, type, row) 
 	    	{
-	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.id + "' target='_blank'>" + data + " (#" + row.id + ")" + "</a>";
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>file.php?id=" + row.id + "' target='_blank'>" + data + " (#" + row.id + ")" + "</a>";
 	        }
 	    },
-	    { data: "author", width: "10%" },
 	    { 
-			data: "threat",
-			width: "15%",
-			render: function (data, type, row) 
-	    	{
-				if (data != undefined) {
-					return "<span class='label label-danger' style='font-size: 12px;'>" + data + "</span>";
-				}
-				else {
-					return "";
-				}
-	        }
-	    },
-		{ 
-			data: "tags",
+			data: "imports",
 			width: "20%",
 			render: function (data, type, row) 
 	    	{
@@ -488,7 +462,8 @@ desired effect
 				});
 				return content;
 	        }
-	    },	    
+	    },
+		{ data: "rules", width: "20%" },
 		{ data: "last_modified", width: "10%" },
 		{ data: "created", width: "10%" },
 		{ 
@@ -497,36 +472,36 @@ desired effect
 	    	render: function (data, type, row) 
 	    	{
 	    		return ""
-	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='View rule' OnClick='rule_open(" + row.id + ")'>"
-	    		+ "<span class='fa fa-eye table-menu'></span>"
-	    		+ "</button> "	
-	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='Export file' OnClick='rule_export(" + row.id + ")'>"
+	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='Open file' OnClick='file_open(" + row.id + ")'>"
+	    		+ "<span class='fa fa-external-link table-menu'></span>"
+	    		+ "</button> "
+	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='Export file' OnClick='file_export(" + row.id + ")'>"
 	    		+ "<span class='fa fa-download table-menu'></span>"
 	    		+ "</button> "
-	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Edit rule' OnClick='rule_update(" + row.id + ")'>"
+	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Edit file' OnClick='show_update_file(" + row.id + ")'>"
 	    		+ "<span class='fa fa-pencil table-menu'></span>"
 	    		+ "</button> "
-	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Copy rule' OnClick='confirm_rule_copy(" + row.id + ")'>"
+	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Copy file' OnClick='confirm_file_copy(" + row.id + ")'>"
 	    		+ "<span class='fa fa-clone table-menu'></span>"
 	    		+ "</button> "	    		
-	    		+ "<button type='button' class='btn btn-sm btn-danger' data-toggle='tooltip' title='Delete rule' OnClick='confirm_rule_delete(" + row.id + ")'>"
+	    		+ "<button type='button' class='btn btn-sm btn-danger' data-toggle='tooltip' title='Delete file' OnClick='confirm_file_delete(" + row.id + ")'>"
 	    		+ "<span class='fa fa-trash table-menu'></span>"
 	    		+ "</button> ";
 	        }
 	    }
       ],
-      order: [[ 4, "desc" ]],
+      order: [[ 3, "desc" ]],
       select: true,
       buttons: [
         {
-        	text: "<i class='fa fa-refresh'></i>",
+            text: "<i class='fa fa-refresh'></i>",
             titleAttr: 'Refresh',
-            action: refresh_rules
+            action: refresh_files
         },
         {
         	text: "<i class='fa fa-plus'></i>",
-            titleAttr: 'Add Rule',
-            action: rule_add
+            titleAttr: 'Add File',
+            action: show_add_file
         }
       ],
     });    
