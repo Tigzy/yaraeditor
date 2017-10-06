@@ -57,13 +57,22 @@ class QueryWhere
 	private $operator;	// =, LIKE
 	private $right;
 	private $type;		// text, int, field
+	private $condition;
+	private $children;	// array of QueryWheres
 			
-	public function __construct($left, $right, $operator = '=', $type = 'text') 
+	// For raw statement, use only left and right, operator must be empty
+	public function __construct($left = '', $right = '', $operator = '=', $type = 'text', $force_condition = '') 
 	{
 		$this->left 		= $left;
 		$this->right 		= $right;
 		$this->operator 	= $operator;
 		$this->type 		= $type;
+		$this->condition    = $force_condition;
+		$this->children     = array();
+	}
+	
+	public function addChildren(QueryWhere $where) {
+		array_push($this->children, $where);
 	}
 	
 	public function getLeft() {
@@ -80,6 +89,52 @@ class QueryWhere
 	
 	public function getType() {
 		return $this->type;
+	}
+	
+	public function getCondition() {
+		return $this->condition;
+	}
+	
+	public function getChildren() {
+		return $this->children;
+	}
+	
+	public function toString($main_condition, $is_first, $is_root, $use_aliases, $table_name) 
+	{
+		$condition 	= empty($this->getCondition()) ? $main_condition : $this->getCondition();
+		$query 		= ($is_first ? ($is_root ? " WHERE " : "") : " " . $condition . " ");
+		
+		// End node
+		if (empty($this->children))
+		{
+			// Raw statement
+			if ($this->getOperator() == '')
+			{
+				// A = 'something'
+				$query = $query. $this->getLeft();
+			}
+			else
+			{
+				// A = 'something'
+				$query = $query. ($use_aliases ? $table_name . "." : "") . $this->getLeft() . " " . $this->getOperator() . " ";
+				if ($this->getType() == 'int') 			$query = $query . $this->getRight();
+				elseif ($this->getType() == 'field') 	$query = $query . $this->getRight();
+				else 									$query = $query . "'" . $this->getRight() . "'";
+			}			
+		}
+		// Parent node
+		else if (is_array($this->children))
+		{
+			$is_first_children = true;
+			$query = $query . '(';
+			foreach($this->children as $where)
+			{
+				$query = $query . $where->toString($main_condition, $is_first_children, False, $use_aliases, $table_name);
+				$is_first_children = false;
+			}
+			$query = $query . ')';
+		}
+		return $query;
 	}
 }
 
@@ -474,10 +529,7 @@ class QueryBuilder
 		foreach ($this->tables as $table){
 			$wheres = $table->getWhere();
 			foreach ($wheres as $where) {
-				$query = $query . ($is_first ? " WHERE " : " " . $table->whereCondition() . " ") . ($aliases ? $table->getName() . "." : "") . $where->getLeft() . " " . $where->getOperator() . " ";
-				if ($where->getType() == 'int') 		$query = $query . $where->getRight();
-				elseif ($where->getType() == 'field') 	$query = $query . $where->getRight();
-				else 									$query = $query . "'" . $where->getRight() . "'";
+				$query = $query . $where->toString($table->whereCondition(), $is_first, True, $aliases, $table->getName());	
 				$is_first = false;
 			}	
 			$wheres = $table->getRawWheres();
@@ -489,10 +541,7 @@ class QueryBuilder
 		foreach ($this->joins as $table){
 			$wheres = $table->getWhere();
 			foreach ($wheres as $where) {
-				$query = $query . ($is_first ? " WHERE " : " " . $table->whereCondition() . " ") . ($aliases ? $table->getName() . "." : "") . $where->getLeft() . " " . $where->getOperator() . " ";
-				if ($where->getType() == 'int') 		$query = $query . $where->getRight();
-				elseif ($where->getType() == 'field') 	$query = $query . $where->getRight();
-				else 									$query = $query . "'" . $where->getRight() . "'";
+				$query = $query . $where->toString($table->whereCondition(), $is_first, True, $aliases, $table->getName());	
 				$is_first = false;
 			}	
 			$wheres = $table->getRawWheres();

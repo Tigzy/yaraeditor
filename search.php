@@ -583,7 +583,7 @@ function initRulesTable()
 	    	width: "15%",
 	    	render: function (data, type, row) 
 	    	{
-	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.id + "' target='_blank'>" + data + " (#" + row.id + ")" + "</a>";
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.id + "'>" + data + " (#" + row.id + ")" + "</a>";
 	        }
 	    },
 	    { data: "author", width: "10%" },

@@ -9,7 +9,7 @@
 */
  
 $config = array(
-    "version" => "0.5",
+    "version" => "0.6",
     "db" => array(
         "usercake" => array(
             "dbname" => "yed",
@@ -89,6 +89,9 @@ $config = array(
 			"class" => "YaraData",
 			"priority" => 9,
 		),
+	),
+	"tests" => array(
+		"storage" => "/data/storage/"	
 	),
 	"available_imports" => array(
 		"pe","elf","cuckoo","magic","hash","math"

@@ -170,6 +170,26 @@ class Rest_Api extends Rest_Rest {
 		}
 	}
 	
+	public function importrules()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$file_id = $this->getParameter("id");
+		if (is_null($file_id)) {$this->response('missing id parameter',400); return false; }	
+		$rules_content = $this->getParameter("content");
+		if (!$rules_content) {$this->response('missing content parameter',400); return false; }		
+		
+		// Get results
+		$core 		= $this->getCore();	
+		$results 	= $core->ImportRules($file_id, $rules_content);
+		if (!$results) {
+			$this->response("unable to import rules",403);
+			return false;
+		}
+		$this->response(json_encode("{}"),200);
+	}
+	
 	public function getrules() 
 	{
 		$this->validateKey();
@@ -682,13 +702,20 @@ class Rest_Api extends Rest_Rest {
 	
 	public function gettestsettable() 
 	{
-		$this->validateKey();
+		//$this->validateKey();
 		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$show_myitems = $this->getParameter("show_myitems");
+		if (!$show_myitems) $show_myitems = "false";
+		$show_myitems = $show_myitems == "true" ? true : false;		
+		$rule_id 			= -1;
+		$rule_id_param   	= $this->getParameter('rule_id');
+		if ($rule_id_param) $rule_id = $rule_id_param;
 				
 		// Get results
 		$core 								= $this->getCore();	
 		$data_container 					= new stdClass();
-		$data_container->data 				= $core->GetTestSets();
+		$data_container->data 				= $core->GetTestSets($rule_id, $show_myitems);
 		$data_container->draw 				= 1;
 		$data_container->recordsTotal 		= count($data_container->data);
 		$data_container->recordsFiltered 	= count($data_container->data);
@@ -772,11 +799,12 @@ class Rest_Api extends Rest_Rest {
 		if (!$testset_id) {$this->response('missing id parameter',400); return false; }	
 		$type = $this->getParameter("type");
 		if (!$type) {$this->response('missing type parameter',400); return false; }	
-		$content = $this->getParameter("content");
-		if (!$content) {$this->response('missing content parameter',400); return false; }	
+		$file = empty($_FILES) ? NULL : $_FILES["file"];
+		$content = $this->getParameter("content");		
+		if (!$content && !$file) {$this->response('missing content or file parameter',400); return false; }	
 		
 		$core = $this->getCore();
-		$id = $core->AddTest($testset_id, $type, $content);
+		$id = $core->AddTest($testset_id, $type, $content, $file);
 		if ($id == 0) {
 			$this->response('Unable to add test',406); 
 			return false;
@@ -785,7 +813,12 @@ class Rest_Api extends Rest_Rest {
 		$data 		= new stdClass();
 		$data->id 	= $id;
 		
-		$this->response(json_encode($data),201);
+		if (!empty($_FILES)) {
+			// If we are submitting files, we need to redirect back to the original test page
+			header("Location: test.php?id=" . $testset_id);
+		} else {
+			$this->response(json_encode($data),201);
+		}
 	}
 	
 	public function getteststable() 
@@ -836,13 +869,15 @@ class Rest_Api extends Rest_Rest {
 		$id = $this->getParameter("id");
 		if (is_null($id)) {$this->response('missing id parameter',400); return false; }	
 		$type = $this->getParameter("type");
-		if (!$type) {$this->response('missing type parameter',400); return false; }	
-		$content = $this->getParameter("content");
-		if (!$content) {$this->response('missing content parameter',400); return false; }	
+		if (!$type) {$this->response('missing type parameter',400); return false; }			
+		$file = empty($_FILES) ? NULL : $_FILES["file"];
+		$content = $this->getParameter("content");		
+		if (!$content && !$file) {$this->response('missing content or file parameter',400); return false; }	
 		
 		// Get results
 		$core = $this->getCore();	
-		$success = $core->UpdateTest($id, $type, $content);
+		$test = $core->GetTest($id);
+		$success = $core->UpdateTest($id, $type, $content, $file);
 		if (!$success) {
 			$this->response("unable to update test",403);
 			return false;
@@ -851,7 +886,12 @@ class Rest_Api extends Rest_Rest {
 		$data 		= new stdClass();
 		$data->id 	= $id;
 		
-		$this->response(json_encode($data),201);
+		if (!empty($_FILES)) {
+			// If we are submitting files, we need to redirect back to the original test page
+			header("Location: test.php?id=" . $test['set_id']);
+		} else {
+			$this->response(json_encode($data),201);
+		}
 	}
 	
 	public function deletetest() 

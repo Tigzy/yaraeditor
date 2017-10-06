@@ -88,6 +88,10 @@ pre
 .boolean 	{ color: blue; }
 .null 		{ color: magenta; }
 .key 		{ color: red; }
+
+[hidden] {
+  display: none !important;
+}
 </style>
   
 </head>
@@ -163,7 +167,7 @@ desired effect
 						</div>
 						<div class="control-group col col-lg-12" style="padding-bottom: 10px;">
 							<div class="input-group">
-								<span class="input-group-addon" id="test-name"><span class="fa fa-asterisk" style="padding-right: 10px"></span>Rule name <a id="link-rule" href="#" target="_blank"> (open)</a></span>
+								<span class="input-group-addon" id="test-name"><span class="fa fa-asterisk" style="padding-right: 10px"></span>Rule name <a id="link-rule" href="#"> (open)</a></span>
 								<input type="text" id="rule-name" class="form-control" placeholder="start typing..." aria-describedby="rule-name">
 							</div>
 						</div>
@@ -233,15 +237,25 @@ desired effect
 	            <div class="modal-header">
 			    </div>
 	            <div class="modal-body">
-			      <form class="form-horizontal" role="form">
+			      <form id="form-add-test" action="api.php" method="post" enctype="multipart/form-data">
 			        <fieldset>
 			          <!-- Text input-->
-			          <div class="form-group">
+			          <div id="form-text" class="form-group">
 			            <label class="col-sm-1 control-label" id="test-label"></label>
 			            <div class="col-sm-11">
 			              <textarea id="test-string" style="width: 100%; height: 100px"></textarea>
 			            </div>
-			          </div>				          			
+			          </div>			          
+			          <div id="form-file" class="form-group">
+			            <label class="col-sm-1 control-label" id="test-label"></label>
+			            <div class="col-sm-11">
+			                <label class="btn btn-primary" for="my-file-selector">
+							    <input id="my-file-selector" name="file" type="file" style="display:none" onchange="$('#upload-file-info').html(this.files[0].name)">
+							    Browse
+							</label>
+							<label id="upload-file-info" style="padding-left:10px;font-weight: 500;"></label>
+			            </div>
+			          </div>			          			          			
 			        </fieldset>			        
 			      </form>				      
 	            </div>
@@ -314,7 +328,7 @@ desired effect
 	  Pace.start();
 	  update_testset( id, name, rule_id,
 		function(data, code) {		
-		  	$('#edit-file').modal('hide');	
+		  	$('#edit-test').modal('hide');	
 		  	
 			var ruleset_name 	= data.name;
 			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rules Set ' + ruleset_name + ' updated.</div>');
@@ -322,7 +336,7 @@ desired effect
 			Pace.stop();
 		},
 		function(message, error) {
-			$('#edit-file').modal('hide');
+			$('#edit-test').modal('hide');
 			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to update rules set</div>');
 		}		
 	  );
@@ -330,6 +344,15 @@ desired effect
 
   function test_add(type)
   {
+	  if (type == 'file') {
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "action").val("addtest"));
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "id").val(<?php echo $test_id ?>));
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "type").val("file"));
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "content").val(""));		  
+	      $('form#form-add-test').submit();
+	      return;
+	  }
+	  
 	  var string_value = $('#edit-test').find('textarea#test-string').val();
 	  
 	  Pace.start();
@@ -337,7 +360,7 @@ desired effect
 		function(data, code) {		
 		  	$('#edit-test').modal('hide');	
 		  	
-			var testset_name = data.name;
+			var testset_name = '#' + data.id;
 			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Tests Set ' + testset_name + ' created.</div>');
 			
 			Pace.stop();
@@ -369,7 +392,7 @@ desired effect
 			refresh_tests();
 		},
 		function(message, error) {
-			$('#edit-file').modal('hide');
+			$('#edit-test').modal('hide');
 			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to run test</div>');
 		}		
 	  );
@@ -377,6 +400,15 @@ desired effect
 
   function test_update(id, type)
   {
+	  if (type == 'file') {
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "action").val("updatetest"));
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "id").val(id));
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "type").val("file"));
+		  $('form#form-add-test').append($("<input>").attr("type", "hidden").attr("name", "content").val(""));		  
+	      $('form#form-add-test').submit();
+	      return;
+	  }
+	  
 	  var content = $('#edit-test').find('textarea#test-string').val();
 	  
 	  Pace.start();
@@ -389,7 +421,7 @@ desired effect
 			refresh_tests();
 		},
 		function(message, error) {
-			$('#edit-file').modal('hide');
+			$('#edit-test').modal('hide');
 			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to update test</div>');
 		}		
 	  );
@@ -493,7 +525,7 @@ desired effect
   }
 		  
   function confirm_test_delete(id)
-  {
+  {	  
 	  $('#confirm-action').find('#confirm-file-name').hide();
 	  $('#confirm-action').find('#new-file-name').val("");	
 	  $('#confirm-action').find('.modal-header').html("Test removal");
@@ -504,9 +536,13 @@ desired effect
 
   function show_add_testset_string_ansi()
   {
+	  $('#edit-test').find('div#form-text').show();
+	  $('#edit-test').find('div#form-file').hide();
 	  $('#edit-test').find('.modal-header').html("Add Test");
 	  $('#edit-test').find('label#test-label').html("String Value (ANSI)");
 	  $('#edit-test').find('textarea#test-string').val("");
+	  $('#edit-test').find('label#upload-file-info').html("");	  
+	  $('#edit-test').find('textarea#test-string').attr('placeholder', 'any string');
 	  $('#edit-test').find('.btn-ok').attr('OnClick', 'test_add(\"string_ansi\")');
 	  $('#edit-test').modal('show');	
 	  $('#edit-test').find('textarea#test-string').focus();  
@@ -514,12 +550,42 @@ desired effect
 
   function show_add_testset_string_unicode()
   {
+	  $('#edit-test').find('div#form-text').show();
+	  $('#edit-test').find('div#form-file').hide();
 	  $('#edit-test').find('.modal-header').html("Add Test");
 	  $('#edit-test').find('label#test-label').html("String Value (UNICODE)");
 	  $('#edit-test').find('textarea#test-string').val("");
+	  $('#edit-test').find('label#upload-file-info').html("");
+	  $('#edit-test').find('textarea#test-string').attr('placeholder', 'any string');
 	  $('#edit-test').find('.btn-ok').attr('OnClick', 'test_add(\"string_unicode\")');
 	  $('#edit-test').modal('show');	
 	  $('#edit-test').find('textarea#test-string').focus();  
+  }
+
+  function show_add_testset_buffer()
+  {
+	  $('#edit-test').find('div#form-text').show();
+	  $('#edit-test').find('div#form-file').hide();
+	  $('#edit-test').find('.modal-header').html("Add Test");
+	  $('#edit-test').find('label#test-label').html("Hex Buffer");
+	  $('#edit-test').find('textarea#test-string').val("");
+	  $('#edit-test').find('label#upload-file-info').html("");
+	  $('#edit-test').find('textarea#test-string').attr('placeholder', 'DEADC0DEDEADBEEF');
+	  $('#edit-test').find('.btn-ok').attr('OnClick', 'test_add(\"buffer\")');
+	  $('#edit-test').modal('show');	
+	  $('#edit-test').find('textarea#test-string').focus();  
+  }
+
+  function show_add_testset_file()
+  {
+	  $('#edit-test').find('div#form-text').hide();
+	  $('#edit-test').find('div#form-file').show();
+	  $('#edit-test').find('.modal-header').html("Add Test");
+	  $('#edit-test').find('label#test-label').html("File");
+	  $('#edit-test').find('textarea#test-string').val("");
+	  $('#edit-test').find('label#upload-file-info').html("");
+	  $('#edit-test').find('.btn-ok').attr('OnClick', 'test_add(\"file\")');
+	  $('#edit-test').modal('show');	
   }
 
   function show_update_test(id)
@@ -531,12 +597,27 @@ desired effect
 
 			if (data.type == 'string_ansi') {
 				$('#edit-test').find('label#test-label').html("String Value (ANSI)");
+				$('#edit-test').find('div#form-text').show();
+				$('#edit-test').find('div#form-file').hide();
 			}
 			else if (data.type == 'string_unicode') {
 				$('#edit-test').find('label#test-label').html("String Value (UNICODE)");
+				$('#edit-test').find('div#form-text').show();
+				$('#edit-test').find('div#form-file').hide();
+			}
+			else if (data.type == 'buffer') {
+				$('#edit-test').find('label#test-label').html("Hex Buffer");
+				$('#edit-test').find('div#form-text').show();
+				$('#edit-test').find('div#form-file').hide();
+			}
+			else if (data.type == 'file') {
+				$('#edit-test').find('label#test-label').html("File");
+				$('#edit-test').find('div#form-text').hide();
+				$('#edit-test').find('div#form-file').show();
 			}
 
 			$('#edit-test').find('.modal-header').html("Edit File");
+			$('#edit-test').find('label#upload-file-info').html("");
 			$('#edit-test').find('textarea#test-string').val(data.content);
 			$('#edit-test').find('.btn-ok').attr('OnClick', "test_update(" + id + ",\"" + data.type + "\")");
 			$('#edit-test').modal('show');	
@@ -682,6 +763,9 @@ desired effect
 					} else if (data == 'string_unicode') {
 						icon_label = 'fa-pencil-square-o';
 						text_label  = 'String (UNICODE)';
+					} else if (data == 'buffer') {
+						icon_label = 'fa-file-code-o';
+						text_label  = 'Hex Buffer';
 					}					
 					return "<span class='fa " + icon_label + " table-menu'></span> " + text_label;
 				}
@@ -741,11 +825,15 @@ desired effect
                 {
                     text: "String (UNICODE)",
                     action: show_add_testset_string_unicode
-                }/*,
+                },
                 {
-                    text: "File (Soon)",
-                    action: show_add_testset_string
-                }*/
+                    text: "Hex Buffer",
+                    action: show_add_testset_buffer
+                },
+                {
+                    text: "File",
+                    action: show_add_testset_file
+                }
     		]
         },
         {

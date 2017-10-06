@@ -105,6 +105,7 @@ desired effect
         <div class="box box-info">
           <div class="box-header with-border">
             <h3 class="box-title">Tests</h3>
+            <label><input type="checkbox" id="show-myitems" style="margin-left: 20px;"> Display my items only</label>
           </div>             
           <div class="box-body">
             <table id="tests" class="table table-bordered table-striped dt-responsive" width="100%" cellspacing="0">
@@ -112,6 +113,7 @@ desired effect
               <tr>
                 <th>Status</th>
                 <th>Name</th>
+                <th>Author</th>
                 <th>Rule</th>               
                 <th>Last Modified</th>
                 <th>Created</th>
@@ -422,6 +424,11 @@ desired effect
     	select: autocomplete_select
     });
     $( "input#rule-name" ).autocomplete( "option", "appendTo", "#rule-name-container" );
+
+    // Checkbox
+    $('#show-myitems').change(function() {
+		table.ajax.reload();
+	});
 	
 	table = $('#tests').DataTable({
       dom: "Bfrtip",
@@ -442,7 +449,8 @@ desired effect
 		  dataType: "json",
 		  url: "api.php",
 		  data: function( data ) {
-			  data.action 	= 'gettestsettable';
+			  data.action 			= 'gettestsettable';
+			  data.show_myitems		= $('#show-myitems').is(":checked");
 		  },
 	  },   
       columns: [
@@ -475,18 +483,22 @@ desired effect
   	    },
     	{ 
 	    	data: "name", 
-	    	width: "30%",
+	    	width: "20%",
 	    	render: function (data, type, row) 
 	    	{
-	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>test.php?id=" + row.id + "' target='_blank'>" + data + " (#" + row.id + ")" + "</a>";
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>test.php?id=" + row.id + "'>" + data + " (#" + row.id + ")" + "</a>";
 	        }
+	    },
+	    { 
+	    	data: "author", 
+	    	width: "10%"
 	    },
 	    { 
 	    	data: "rule_name", 
 	    	width: "25%",
 	    	render: function (data, type, row) 
 	    	{
-	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.rule_id + "' target='_blank'>" + data + " (#" + row.rule_id + ")" + "</a>";
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.rule_id + "'>" + data + " (#" + row.rule_id + ")" + "</a>";
 	        }
 	    },
 		{ data: "last_modified", width: "10%" },
@@ -503,10 +515,10 @@ desired effect
 	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='Open tests set' OnClick='testset_open(" + row.id + ")'>"
 	    		+ "<span class='fa fa-external-link table-menu'></span>"
 	    		+ "</button> "
-	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Edit file' OnClick='show_update_testset(" + row.id + ")'>"
+	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Edit tests set' OnClick='show_update_testset(" + row.id + ")'>"
 	    		+ "<span class='fa fa-pencil table-menu'></span>"
 	    		+ "</button> "
-	    		+ "<button type='button' class='btn btn-sm btn-danger' data-toggle='tooltip' title='Delete file' OnClick='confirm_testset_delete(" + row.id + ")'>"
+	    		+ "<button type='button' class='btn btn-sm btn-danger' data-toggle='tooltip' title='Delete tests set' OnClick='confirm_testset_delete(" + row.id + ")'>"
 	    		+ "<span class='fa fa-trash table-menu'></span>"
 	    		+ "</button> ";
 	        }
@@ -525,6 +537,7 @@ desired effect
             titleAttr: 'Refresh',
             action: refresh_tests
         }
+        
       ],
     });    
   });

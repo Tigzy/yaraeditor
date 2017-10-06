@@ -373,13 +373,13 @@ function initHistoryTable()
 				}	
 				else if (row.action == 'recyclebin') {
 					text_label  = "<span class='fa fa-lock table-menu' data-toggle='tooltip' title='Removed items cannot be open' style='padding-right: 5px;'></span> "
-						+ "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>recycle.php' target='_blank'>" + text_label + " (#" + row.item_id + ")" + "</a>";
+						+ "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>recycle.php'>" + text_label + " (#" + row.item_id + ")" + "</a>";
 				}
 				else if (row.item_type == 'file') {
-					text_label  = "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>file.php?id=" + row.item_id + "' target='_blank'>" + text_label + " (#" + row.item_id + ")" + "</a>";
+					text_label  = "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>file.php?id=" + row.item_id + "'>" + text_label + " (#" + row.item_id + ")" + "</a>";
 				}
 				else if (row.item_type == 'rule') {
-					text_label  = "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.item_id + "' target='_blank'>" + text_label + " (#" + row.item_id + ")" + "</a>";
+					text_label  = "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.item_id + "'>" + text_label + " (#" + row.item_id + ")" + "</a>";
 				}
 				return text_label;
 	        }			

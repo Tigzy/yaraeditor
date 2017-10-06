@@ -120,6 +120,9 @@ desired effect
             <div class="btn-group pull-right" style="padding-right: 10px">
 				<button id="save-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Save file' OnClick="file_update(<?php echo $file_id ?>)"><span class="fa fa-save"></span></button>
 			</div>	
+			<div class="btn-group pull-right" style="padding-right: 10px">
+				<button id="export-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Import file' OnClick="show_import_file()"><span class="fa fa-upload"></span></button>
+			</div>
             <div class="btn-group pull-right" style="padding-right: 10px">
 				<button id="export-button" class="btn btn-primary jsbtn" data-toggle='tooltip' title='Export file' OnClick="file_export(<?php echo $file_id ?>)"><span class="fa fa-download"></span></button>
 			</div>				
@@ -212,6 +215,32 @@ desired effect
 	            <div class="modal-footer">
 	                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
 	                <a class="btn btn-danger btn-ok" OnClick="">Confirm</a>
+	            </div>
+	        </div>
+	    </div>
+	  </div>
+	  
+	  <div class="modal fade" id="import-file" tabindex="-1" role="dialog" aria-labelledby="myModalLabel2" aria-hidden="true">
+	    <div class="modal-dialog">
+	        <div class="modal-content">
+	            <div class="modal-header">
+			    </div>
+	            <div class="modal-body">
+			      <form id="form-add-test">
+			        <fieldset>
+			          <!-- Text input-->
+			          <div id="form-text" class="form-group">
+			            <label class="col-sm-1 control-label" id="import-label"></label>
+			            <div class="col-sm-11">
+			              <textarea id="import-string" style="width: 100%; height: 400px"></textarea>
+			            </div>
+			          </div>			          			          			
+			        </fieldset>			        
+			      </form>				      
+	            </div>
+	            <div class="modal-footer">
+	                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+	                <a class="btn btn-danger btn-ok" OnClick="">Import</a>
 	            </div>
 	        </div>
 	    </div>
@@ -389,6 +418,26 @@ desired effect
 	  );
   }
 
+  function rules_import()
+  {
+	  var string_value = $('#import-file').find('textarea#import-string').val();
+	  
+	  Pace.start();
+	  import_rules( <?php echo $file_id ?>, string_value,
+		function(data, code) {		
+		  	$('#import-file').modal('hide');			  	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rules imported with success.</div>');
+			
+			Pace.stop();
+			refresh_rules();
+		},
+		function(message, error) {
+			$('#import-file').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to import rules</div>');
+		}		
+	  );
+  }
+
   function rule_add()
   {
 	  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>edit.php?file_id=" + <?php echo $file_id ?>);
@@ -422,6 +471,17 @@ desired effect
   function refresh_rules() 
   {
       $('#rules').DataTable().ajax.reload();
+  }
+
+  function show_import_file()
+  {
+	  $('#import-file').find('.modal-header').html("Import Rule(s)");
+	  $('#import-file').find('label#import-label').html("Content");
+	  $('#import-file').find('textarea#import-string').val("");  
+	  $('#import-file').find('textarea#import-string').attr('placeholder', 'put your rule(s) content here');
+	  $('#import-file').find('.btn-ok').attr('OnClick', 'rules_import()');
+	  $('#import-file').modal('show');	
+	  $('#import-file').find('textarea#import-string').focus();  
   }
   
   //============================================
@@ -460,7 +520,7 @@ desired effect
 	    	width: "20%",
 	    	render: function (data, type, row) 
 	    	{
-	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.id + "' target='_blank'>" + data + " (#" + row.id + ")" + "</a>";
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.id + "'>" + data + " (#" + row.id + ")" + "</a>";
 	        }
 	    },
 	    { data: "author", width: "10%" },

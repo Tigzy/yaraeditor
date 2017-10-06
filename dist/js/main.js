@@ -63,6 +63,22 @@ function export_rule(rule_id, onSuccess, onFailure)
 	onSuccess();
 }
 
+function import_rules(file_id, content, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=importrules',
+		dataType: 'json',	
+		data: {id: file_id, content: content},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
 function get_rule(rule_id, onSuccess, onFailure)
 {
 	return $.ajax({
@@ -667,6 +683,13 @@ function serializeRuleInput() {
 	return serialized;
 }
 
+function isInt(value) 
+{
+    if (/^(\-|\+)?([0-9]+|Infinity)$/.test(value))
+        return Number(value);
+    return NaN;
+}
+
 function refreshRulePreview() {
 	
 	Pace.start();
@@ -726,7 +749,7 @@ function refreshRulePreview() {
 		if (low_value == "true" || low_value == "false") {
 			// Boolean, nothing to do.
 		}
-		else if(!isNaN(parseInt(low_value))) {
+		else if(!isNaN(isInt(low_value))) {
 			// Int, nothing to do
 		}
 		else {

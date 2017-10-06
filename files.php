@@ -448,7 +448,7 @@ desired effect
 	    	width: "25%",
 	    	render: function (data, type, row) 
 	    	{
-	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>file.php?id=" + row.id + "' target='_blank'>" + data + " (#" + row.id + ")" + "</a>";
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>file.php?id=" + row.id + "'>" + data + " (#" + row.id + ")" + "</a>";
 	        }
 	    },
 	    { 

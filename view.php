@@ -328,6 +328,40 @@ desired effect
 				
 			</div>
 			
+			<!-- Tests -->
+			<div class="row">
+				<section class="col-lg-12">			
+					<div id="search" class="panel-group">
+					  <div class="panel panel-info">
+					    <div class="panel-heading">
+					      <h4 class="panel-title">
+					        <a data-toggle="collapse" href="#collapse_tests"><span class="fa fa-refresh"></span> Tests</a>
+					      </h4>
+					    </div>
+					    <div id="collapse_tests" class="panel-collapse collapse">
+						    <div class="panel-body">	
+						    	<table id="tests" class="table table-bordered table-striped dt-responsive" width="100%" cellspacing="0">
+					              <thead>
+					              <tr>
+					                <th>Status</th>
+					                <th>Name</th>
+					                <th>Author</th>
+					                <th>Rule</th>               
+					                <th>Last Modified</th>
+					                <th>Created</th>
+					                <th>Actions</th>
+					              </tr>
+					              </thead>
+					              <tbody>              
+					              </tbody>
+					           </table>			    
+							</div>				    
+					    </div>
+					  </div>
+					</div>			
+				</section>				
+			</div>
+			
 		</section>
 		</form>
 		<!-- /.content -->
@@ -394,6 +428,16 @@ function rule_export(id)
 			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to export rule</div>');
 		}		
 	  );
+}
+
+function refresh_tests() 
+{
+  $('#tests').DataTable().ajax.reload();
+}
+
+function testset_open(id)
+{
+  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>test.php?id=" + id);
 }
 
 $(function () {
@@ -502,6 +546,106 @@ $(function () {
     $('#strings').on( 'draw.dt', function () {
     	onRuleFormChanged();
     } );
+
+ 	// Tests
+    // ===========================================================
+
+    var table_tests = $('#tests').DataTable({
+      dom: "Bfrtip",
+      paging: true,
+      lengthChange: true,
+      searching: true,
+      ordering: true,
+      info: true,
+      autoWidth: true,
+      processing: false,
+      serverSide: false,
+      responsive: true,
+      fnInitComplete: function (oSettings, json) {
+		  Pace.stop();
+      },
+      ajax: {
+		  type: "GET",
+		  dataType: "json",
+		  url: "api.php",
+		  data: function( data ) {
+			  data.action 			= 'gettestsettable';
+			  data.rule_id			= <?php echo $rule_id ?>;
+		  },
+	  },   
+      columns: [
+    	  { 
+  			data: "status",
+  			width: "10%",
+  			render: function (data, type, row) 
+  	    	{
+  				var text_label 	= data;
+				if (data != undefined) {
+					var class_label = 'label-primary';
+					if (data == 'idle') {
+						class_label = 'label-primary';
+						text_label  = 'Idle';
+					}	
+					else if (data == 'passed') {
+						class_label = 'label-success';
+						text_label  = 'Passed';
+					}
+					else if (data == 'failed') {
+						class_label = 'label-danger';
+						text_label  = 'Failed';
+					}		
+					return "<span class='label " + class_label + "' style='font-size: 12px;'>" + text_label + "</span>";
+				}
+				else {
+					return "";
+				}
+  	        }
+  	    },
+    	{ 
+	    	data: "name", 
+	    	width: "20%",
+	    	render: function (data, type, row) 
+	    	{
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>test.php?id=" + row.id + "'>" + data + " (#" + row.id + ")" + "</a>";
+	        }
+	    },
+	    { 
+	    	data: "author", 
+	    	width: "10%"
+	    },
+	    { 
+	    	data: "rule_name", 
+	    	width: "25%",
+	    	render: function (data, type, row) 
+	    	{
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.rule_id + "'>" + data + " (#" + row.rule_id + ")" + "</a>";
+	        }
+	    },
+		{ data: "last_modified", width: "10%" },
+		{ data: "created", width: "10%" },
+		{ 
+	    	data: "action", 
+	    	width: "15%",
+	    	render: function (data, type, row) 
+	    	{
+	    		return ""
+	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='Open tests set' OnClick='testset_open(" + row.id + ")'>"
+	    		+ "<span class='fa fa-external-link table-menu'></span>"
+	    		+ "</button> ";
+	        }
+	    }
+      ],
+      order: [[ 4, "desc" ]],
+      select: true,
+      buttons: [
+        {
+        	text: "<i class='fa fa-refresh'></i>",
+            titleAttr: 'Refresh',
+            action: refresh_tests
+        }
+        
+      ],
+    }); 
 
     // Load rule
     loadRule(<?php echo $rule_id ?>);

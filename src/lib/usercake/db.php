@@ -1025,7 +1025,7 @@ class UCDatabase
 		`title` varchar(150) NOT NULL,
 		`sign_up_stamp` int(11) NOT NULL,
 		`last_sign_in_stamp` int(11) NOT NULL,
-		`avatar` text NOT NULL,
+		`avatar` longtext NOT NULL,
 		PRIMARY KEY (`id`)
 		) ENGINE=InnoDB  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 		";

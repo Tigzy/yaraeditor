@@ -325,27 +325,29 @@ class YEdDatabase
 		if ( isset($params->quick) && $params->quick != -1 ) 
 		{
 			$table_rule->setWhereCondition('OR');
-			$table_rule->addWhere(new QueryWhere('name', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str'));
-			$table_rule->addRawWhere('FIND_IN_SET("' . $this->escape_string($params->quick) . '", tags)');	
-			$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__threat") LIKE "%' . $this->escape_string($params->quick) . '%"');
-			$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__comment") LIKE "%' . $this->escape_string($params->quick) . '%"');
+			$filter_statement = new QueryWhere();
+			$filter_statement->addChildren(new QueryWhere('name', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str', 'OR'));			
+			$filter_statement->addChildren(new QueryWhere('FIND_IN_SET("' . $this->escape_string($params->quick) . '", tags)', '', '', '', 'OR'));	
+			$filter_statement->addChildren(new QueryWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__threat") LIKE "%' . $this->escape_string($params->quick) . '%"', '', '', '', 'OR'));
+			$filter_statement->addChildren(new QueryWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__comment") LIKE "%' . $this->escape_string($params->quick) . '%"', '', '', '', 'OR'));
+			$filter_statement->addChildren(new QueryWhere('(meta.name LIKE "%' . $this->escape_string($params->quick) . '%" OR meta.value LIKE "%' . $this->escape_string($params->quick) . '%")', '', '', '', 'OR'));			
+			$filter_statement->addChildren(new QueryWhere('(string.name LIKE "%' . $this->escape_string($params->quick) . '%" OR string.value LIKE "%' . $this->escape_string($params->quick) . '%")', '', '', '', 'OR'));
 			
 			$table_metas = new QueryTable('meta');	
 			$table_metas->setWhereCondition('OR');
-			$table_metas->addRawWhere('(meta.name LIKE "%' . $this->escape_string($params->quick) . '%" OR meta.value LIKE "%' . $this->escape_string($params->quick) . '%")');
 			$table_metas->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
 			$table_metas->setJoinType('LEFT');
 			$queryobj->addJoinTable($table_metas);
 						
 			$table_strings = new QueryTable('string');	
 			$table_strings->setWhereCondition('OR');
-			$table_strings->addRawWhere('(string.name LIKE "%' . $this->escape_string($params->quick) . '%" OR string.value LIKE "%' . $this->escape_string($params->quick) . '%")');
 			$table_strings->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
 			$table_strings->setJoinType('LEFT');
 			$queryobj->addJoinTable($table_strings);
 			
-			$table_rule->addWhere(new QueryWhere('cond', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str'));
-			$table_rule->addWhere(new QueryWhere('status', self::status_recyclebin, '<>', 'text'));
+			$filter_statement->addChildren(new QueryWhere('cond', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str', 'OR'));
+			$table_rule->addWhere($filter_statement);			
+			$table_rule->addWhere(new QueryWhere('status', self::status_recyclebin, '<>', 'text', 'AND'));
 		}
 		else 
 		{
@@ -839,19 +841,36 @@ class YEdDatabase
 		return $id;
 	}
 	
-	public function GetTestSets() 
+	public function GetTestSets($rule_id = -1, $user = -1) 
 	{		
-		$stmt = $this->mysqli->prepare("SELECT t.id, t.rule_id, t.author, r.name as rule_name, t.name, t.created, t.modified, t.status 
-				FROM testset t
-				LEFT JOIN rule r on r.id = t.rule_id"
-		);
-		$stmt->execute();
-		$stmt->bind_result($id, $rule_id, $author, $rule_name, $name, $created, $modified, $status);
-		$results = array();
-		while ($stmt->fetch()) {
-			$results[] = array('id' => $id, 'rule_id' => $rule_id, 'author' => $author, 'rule_name' => $rule_name, 'name' => $name, 'created' => $created, 'last_modified' => $modified, 'status' => $status);
+		$queryobj = new QueryBuilder();
+		$table_testset = new QueryTable('testset');
+		$table_testset->setSelect(array(
+				'id' => 'id',
+				'rule_id' => 'rule_id',
+				'author' => 'author_id',
+				'name' => 'name',				
+				'modified' => 'last_modified',
+				'created' => 'created',
+				'status' => 'status'
+		));
+		$table_testset->addGroupBy('id');
+		$table_testset->addOrderBy(new QueryOrderBy('modified', 'DESC', True));				
+		
+		if ( $user != -1 ) {
+			$table_testset->addWhere(new QueryWhere('author', $this->escape_string($user), '=', 'int'));
 		}
-		$stmt->close();		
+		if ( $rule_id != -1 ) {
+			$table_testset->addWhere(new QueryWhere('rule_id', $this->escape_string($rule_id), '=', 'int'));
+		}
+		
+		$table_rules = new QueryTable('rule');
+		$table_rules->setSelect(array('name' => 'rule_name'));	
+		$table_rules->addJoinWhere(new QueryWhere('id', 'testset.rule_id', '=', 'field'));
+		$queryobj->addJoinTable($table_rules);		
+		
+		$queryobj->addTable($table_testset);	
+		$results = $this->Execute($queryobj);	
 		return $results;
 	}
 	
@@ -1505,8 +1524,7 @@ class YEdDatabase
 		
 		$testset_sql = "
 		ALTER TABLE `testset`
-		  ADD PRIMARY KEY (`id`),
-		  ADD UNIQUE KEY `rule_id` (`rule_id`);
+		  ADD PRIMARY KEY (`id`);
 		";	
 		
 		$stmt = $this->mysqli->prepare($testset_sql);

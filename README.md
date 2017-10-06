@@ -4,6 +4,17 @@ yaraeditor-web
 Malware Repository Framework
 Official page: http://www.adlice.com/download/yaraeditorweb/
 
+## Version 0.6
+Added Buffer test item  
+Added File test item (local storage)  
+Removed new tab links  
+Added filter to display only user tests  
+Added Import form (raw text)  
+Added Tests listing and creation in rule edition page  
+Fixed public sharing permissions  
+Fixed search query  
+Minor fixes  
+
 ## Version 0.5
 Added Tests sets page  
 Added Tests set page  

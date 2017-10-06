@@ -1,22 +1,27 @@
 #!/usr/bin/env python
-import os, sys, json, string, argparse, re
+import os, sys, json, string, argparse, re, binascii
 import yara #pip install yara-python
+from plyara.plyara import PlyaraParser #pip install ply
 from __builtin__ import file
 
 def parse_args():
     global filepath
     global testitem
-    global stream_id
+    global parseitem
     
     argsParser = argparse.ArgumentParser(usage='Parse Yara information')
     argsParser.add_argument('-f', '--file', dest='filepath', default='', help='The yara file that will be used', required=True)
-    argsParser.add_argument('-t', '--testitem', dest='testitem', default='', help='The yara test item that will be used', required=False)
+    argsParser.add_argument('-t', '--testitem', dest='testitem', default='', help='The item will be tested for syntax', required=False)
+    argsParser.add_argument('-p', '--parseitem', action='store_true', default=False, help='The item will be parsed into a dict', required=False)
     args = argsParser.parse_args()
     
     filepath = os.path.normpath(args.filepath)
     testitem = ''
+    parseitem = False
     if args.testitem:
         testitem = os.path.normpath(args.testitem)
+    elif args.parseitem:
+        parseitem = True
 
 def convert_char(char):
     if char in string.ascii_letters or char in string.digits or char in string.punctuation or char in string.whitespace or char == '\r' or char == '\n':
@@ -119,6 +124,27 @@ def TestCompile(path):
         
     return 0
 
+def stringify(input):
+    if isinstance(input, dict):
+        return {stringify(key): stringify(value)
+                for key, value in input.iteritems()}
+    elif isinstance(input, list):
+        return [stringify(element) for element in input]
+    elif isinstance(input, unicode):
+        return input.decode('utf-8')
+    elif isinstance(input, str):
+        try:
+            output = input.decode('utf-8')
+            return output
+        except:
+            binstr = binascii.hexlify(input)
+            return binstr.decode('utf-8').upper()
+            
+    elif isinstance(input, tuple):
+        return tuple(stringify(value) for value in input)
+    else:
+        return input
+
 def TestFile(path, testitem):
     if not(os.path.isfile(path)):
         print '{0} not a file!'.format(path)
@@ -140,7 +166,95 @@ def TestFile(path, testitem):
                 match["metas"]      = item.meta
                 data["matches"].append(match)
             
+        data = stringify(data)
         encoded = json.dumps(data)
+        print encoded
+    except Exception as ex:
+        data = {}
+        data['valid'] = False            
+        print json.dumps(data)
+        return 1
+        
+    return 0
+
+def FormatParsing(results):
+    data = []
+    for rule in results:
+        f_rule = {}
+        
+        # header
+        f_rule["name"] = rule["rule_name"]    
+        f_rule["comment"] = ""
+        
+        # tags
+        f_rule["tags"] = []
+        if "tags" in rule:
+            f_rule["tags"] = rule["tags"]   
+        
+        # imports
+        f_rule["imports"] = []
+        if "imports" in rule:
+            f_rule["imports"] = rule["imports"]
+            
+        # scope
+        f_rule["is_private"]    = False
+        f_rule["is_global"]     = False
+        if "scopes" in rule:
+            f_rule["is_private"]    = ('private' in rule["scopes"])
+            f_rule["is_global"]     = ('global' in rule["scopes"])
+            
+        # metas
+        f_rule["metas"] = []
+        f_rule["author"] = ""
+        f_rule["threat"] = ""
+        if "metadata" in rule:
+            for key, value in rule["metadata"].iteritems():
+                if key == "threat":
+                    f_rule["threat"] = value
+                else:
+                    real_key = key
+                    if real_key in ["author", ""]:  # forbidden keys
+                        real_key = "_" + real_key
+                    
+                    meta = {}
+                    meta["name"]  = real_key
+                    meta["value"] = value
+                    f_rule["metas"].append(meta)
+        
+        # strings
+        f_rule["strings"] = []
+        if "strings" in rule:
+            for string in rule["strings"]:
+                if 'name' in string and 'value' in string:               
+                    new_string = {}
+                    new_string["name"]  = string['name']
+                    new_string["value"] = string['value']
+                    if 'modifiers' in string:
+                        new_string["value"] = new_string["value"] + " " + " ".join([str(x) for x in string['modifiers']])
+                    
+                    f_rule["strings"].append(new_string)
+        
+        # condition
+        f_rule["condition"] = " ".join([str(x) for x in rule['condition_terms']])
+        
+        data.append(f_rule)
+        
+    return data
+
+def ParseFile(path):
+    if not(os.path.isfile(path)):
+        print '{0} not a file!'.format(path)
+        return 2
+
+    try:
+        data = {}
+        data['valid']   = True    
+        parser          = PlyaraParser()           
+        rules           = parser.parseFromFile(path)   
+        rules           = FormatParsing(rules)
+        data            = stringify(rules)
+        encoded         = json.dumps(data)
+        #[{"condition_terms": ["any", "of", "them"], "rule_name": "RuleProgramAdw_DNSUnlocker", "metadata": {"modified": "\"04/11/2017 16:49:48\"", "threat": "\"Adw.DNSUnlocker\"", "created": "\"12/15/2016 00:00:00\""}, "strings": [{"modifiers": ["ascii"], "name": "$0", "value": "\"test.dll\""}], "tags": ["__ProgramRuleGenerated", "SignatureBlacklist"]}]
         print encoded
     except Exception as ex:
         data = {}
@@ -167,6 +281,9 @@ if os.path.isdir(filepath):
     exit(2)
 elif testitem:
     code = TestFile(filepath, testitem)
+    exit(code)
+elif parseitem:
+    code = ParseFile(filepath)
     exit(code)
 else:
     code = TestCompile(filepath)

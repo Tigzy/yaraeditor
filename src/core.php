@@ -55,11 +55,12 @@ class YEdCore
 	// Check if we can touch the file
 	public function HasPermission($user, $permission, $item_id = null)
 	{	
-		if (!$user) return False;
+		if ($permission != 'read' && !$user) return False;
 				
 		// Edit permissions
-		if ($permission == 'read') {			
-			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_reader, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
+		if ($permission == 'read') {	
+			// Needs to be system wide for sharing rules
+			return true; //UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_reader, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
 		} 
 		else if ($permission == 'add') {
 			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
@@ -92,12 +93,26 @@ class YEdCore
 			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_publisher));
 		}
 		else if ($permission == 'add_test') {
-			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'run_test') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'edit_testset') {
+			$set = $this->GetTestSet($item_id);		
+			if (!$set) return False;	
+			if ($set["author"] == $user && UCUser::ValidateUserPermission($user, array(self::perm_user_contributor))) return True;	// Contributor can only edit own rules
+			else return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
 		}
 		else if ($permission == 'edit_test') {
 			$test = $this->GetTest($item_id);
-			if (!$test) return False;
-			$set = $this->GetTestSet($test["set_id"]);
+			$set  = NULL;
+			if (!$test || $test["id"] == NULL) {
+				$set = $this->GetTestSet($item_id);
+			}
+			else {
+				$set = $this->GetTestSet($test["set_id"]);
+			}			
 			if (!$set) return False;	
 			if ($set["author"] == $user && UCUser::ValidateUserPermission($user, array(self::perm_user_contributor))) return True;	// Contributor can only edit own rules
 			else return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
@@ -257,6 +272,50 @@ class YEdCore
 		
 		$content .= "}\n";
 		return $content;
+	}
+	
+	public function ImportRules($file_id, $content)
+	{
+		global $user;
+		if (!$this->CheckPermissions('add'))
+			return False;
+		
+		// Get file
+		$file = $this->GetFile($file_id);
+		
+		// Parse content with module		
+		$data = array('content' => &$content);
+		if (!$this->modules->Notify("OnYaraParseString", $data) || !isset($data['rules'])) {
+			return False;
+		}
+		if (isset($data['rules']->valid) && !$data['rules']->valid) {
+			return False;
+		}
+			
+		// Add rules
+		$success = True;
+		$imports_needed = $file["imports"];
+		foreach ($data['rules'] as $rule)
+		{
+			$rule_obj 				= (object) $rule;
+			$rule_obj->file_id 		= $file_id;
+			$rule_obj->author 		= $user->DisplayName();
+			$rule_obj->author_id 	= $user->Id();
+			$rule_obj->is_public    = False;
+			
+			// Merge imports
+			$rule_imports 	= array_map( function($item) { return trim($item,'"'); }, $rule_obj->imports);			
+			$imports_needed = array_unique(array_merge($imports_needed, $rule_imports));
+			
+			if (!$this->CreateRule($rule_obj)) {
+				$success = False;
+			}
+		}
+			
+		// Update file
+		$this->UpdateFile($file_id, $file["name"], $imports_needed);
+		
+        return $success;
 	}
 	
 	public function GetFile($file_id)
@@ -426,7 +485,7 @@ class YEdCore
 		
 		$this->database->CreateRuleMeta($id, "__author", $rule_content->author_id);
 		$this->database->CreateRuleMeta($id, "__comment", $rule_content->comment);
-		$this->database->CreateRuleMeta($id, "__threat", $rule_content->threat);
+		$this->database->CreateRuleMeta($id, "__threat", trim($rule_content->threat, '"'));
 		$this->database->CreateRuleMeta($id, "__public", $rule_content->is_public);
 		
 		// Create metas
@@ -458,7 +517,7 @@ class YEdCore
 		
 		$this->database->UpdateRuleMeta($rule_id, "__author", $rule_content->author_id);
 		$this->database->UpdateRuleMeta($rule_id, "__comment", $rule_content->comment);
-		$this->database->UpdateRuleMeta($rule_id, "__threat", $rule_content->threat);
+		$this->database->UpdateRuleMeta($rule_id, "__threat", trim($rule_content->threat, '"'));
 		$this->database->UpdateRuleMeta($rule_id, "__public", $rule_content->is_public);
 		
 		// Update metas
@@ -632,12 +691,33 @@ class YEdCore
 		return $id;
 	}
 	
-	public function GetTestSets()
+	public function GetTestSets($rule_id, $show_myitems_only)
 	{
 		if (!$this->CheckPermissions('read'))
 			return False;
 		
-		return $this->database->GetTestSets();
+		// If user cannot read all recycle, filter his own items
+		$user_id = -1;
+		if ($show_myitems_only)		
+		{
+			global $user;
+			$user_id = $user->Id();
+		}
+		
+		$tests = $this->database->GetTestSets($rule_id, $user_id);
+		$users = $this->GetUsers();
+		foreach($tests as &$test)
+		{
+			$test["author"] = "";
+			foreach($users as $user)
+			{
+				if ($user["id"] == $test["author_id"])
+				{
+					$test["author"] = $user["display_name"];
+				}
+			}
+		}
+		return $tests;
 	}
 	
 	public function GetTestSet($id)
@@ -650,7 +730,7 @@ class YEdCore
 	
 	public function UpdateTestSet($id, $name, $rule_id)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('edit_testset', $id))
 			return False;
 		
 		//$old_file 	= $this->GetFile($file_id);			
@@ -663,7 +743,7 @@ class YEdCore
 	
 	public function DeleteTestSet($id)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('edit_testset', $id))
 			return False;
 		
 		return $this->database->DeleteTestSet($id);
@@ -671,7 +751,7 @@ class YEdCore
 	
 	public function RunTestSet($id)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('run_test'))
 			return NULL;
 		
 		$tests = $this->GetTests($id);
@@ -688,11 +768,11 @@ class YEdCore
 	
 	public function UpdateTestSetStatus($id)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('edit_testset', $id))
 			return False;
 		
 		$set = $this->GetTestSet($id);
-		if (!$set) return False;	
+		if (!$set || $set["id"] == NULL) return False;	
 		$tests = $this->GetTests($id);
 		
 		$ran 	= False;
@@ -723,12 +803,45 @@ class YEdCore
 		return True;
 	}
 	
-	public function AddTest($testset_id, $type, $content)
+	public function ValidateTestData($type, &$content, $file)
+	{
+		if ($type != 'file' && $type != 'string_ansi' && $type != 'string_unicode' && $type != 'buffer')
+			return false;
+		
+		// Sanity check and formatting for buffer
+		if ($type == 'buffer') {
+			$content = str_replace(" ", "", $content);	// Remove all spaces (in case of buffer with spaces: DE AD C0 DE)
+			$content = strtoupper($content);			// Upper case
+			if (!ctype_xdigit($content)) {				// Validate content
+				return false;
+			}
+		}
+		else if ($type == 'file') {
+			if (!$file || !isset($file["tmp_name"])) {
+				return false;
+			}		
+			// store file
+			$md5 	= md5_file($file['tmp_name']);
+			$path 	= $GLOBALS["config"]["tests"]["storage"] . $md5;
+			$index  = 0;
+			while (file_exists($path)) {
+				$path = $GLOBALS["config"]["tests"]["storage"] . $md5 . '-' . strval($index);
+				$index++;
+			}			
+			if (!move_uploaded_file($file['tmp_name'], $path)) {
+				return false;
+			}			
+			$content = basename($path);
+		}
+		return true;
+	}
+	
+	public function AddTest($testset_id, $type, $content, $file)
 	{
 		if (!$this->CheckPermissions('add_test'))
 			return False;
 			
-		if ($type != 'file' && $type != 'string_ansi' && $type != 'string_unicode')
+		if (!$this->ValidateTestData($type, $content, $file))
 			return false;
 			
 		$id = $this->database->AddTest($testset_id, $type, $content);
@@ -754,10 +867,18 @@ class YEdCore
 		return $this->database->GetTest($id);
 	}
 	
-	public function UpdateTest($id, $type, $content)
+	public function UpdateTest($id, $type, $content, $file)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('edit_test', $id))
 			return False;
+		
+		if (!$this->ValidateTestData($type, $content, $file))
+			return false;
+		
+		$test = $this->database->GetTest($id);
+		if ($test['type'] == 'file') {
+			unlink($GLOBALS["config"]["tests"]["storage"] . $test['content']);
+		}
 		
 		//$old_file 	= $this->GetFile($file_id);			
 		$success 	= $this->database->UpdateTest($id, $type, $content);
@@ -769,20 +890,44 @@ class YEdCore
 	
 	public function DeleteTest($id)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('edit_test', $id))
 			return False;
 		
+		$test = $this->database->GetTest($id);
+		if ($test['type'] == 'file') {
+			unlink($GLOBALS["config"]["tests"]["storage"] . $test['content']);
+		}
+			
 		return $this->database->DeleteTest($id);
 	}
 	
 	public function CopyTest($id)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('edit_test', $id))
 			return 0;
 		
-		$file 	= $this->database->GetTest($id);		
+		$test 	= $this->database->GetTest($id);		
 		$new_id = $this->database->CopyTest($id);
-		if ($new_id != 0) {
+		if ($new_id != 0) 
+		{
+			$test = $this->database->GetTest($new_id);
+			if ($test['type'] == 'file') 
+			{
+				// Duplicate file
+				$md5    	= $test['content'];
+				$old_path 	= $GLOBALS["config"]["tests"]["storage"] . $md5;
+				$path 		= $GLOBALS["config"]["tests"]["storage"] . $md5;
+				$index  	= 0;
+				while (file_exists($path)) {
+					$path = $GLOBALS["config"]["tests"]["storage"] . $md5 . '-' . strval($index);
+					$index++;
+				}
+				if (!copy_file($old_path, $path)) {
+					return 0;
+				}
+				$this->database->UpdateTest($new_id, $test['type'], $path);
+			}
+			
 			//$this->AddFileActionToHistory('add', $id, $new_name);
 		}
 		return $new_id;
@@ -790,7 +935,7 @@ class YEdCore
 	
 	public function RunTest($id)
 	{
-		if (!$this->CheckPermissions('edit_test'))
+		if (!$this->CheckPermissions('run_test'))
 			return 0;
 		
 		return $this->YaraRunTest($id);
@@ -847,14 +992,13 @@ class YEdCore
 			return "bool";
 		}
 		// Int type
-		$int_value = intval($meta_value);
-		if ($int_value != 0)
+		if (is_numeric($meta_value))
 		{
-			$sanitized_meta_value = $int_value;
+			$sanitized_meta_value = intval($meta_value);;
 			return "int";
 		}		
 		// String type
-		$sanitized_meta_value = $meta_value;
+		$sanitized_meta_value = trim($meta_value, '"');
 		return "string";
 	}
 	
@@ -995,7 +1139,7 @@ class YEdCore
 		$rule_name 		= "";
 		$rule_export 	= $this->GetRuleExport($set["rule_id"], $rule_name);				
 		
-		$data = array('rule_export' => &$rule_export, 'test_type' => $test["type"], 'test_data' => $test["content"]);
+		$data = array('rule_export' => &$rule_export, 'test_type' => $test["type"], 'test_data' => $test["content"], 'storage_path' => $GLOBALS["config"]["tests"]["storage"]);
 		if (!$this->modules->Notify("OnYaraTest", $data) || !isset($data['rule_test'])) {
 			return NULL;
 		}

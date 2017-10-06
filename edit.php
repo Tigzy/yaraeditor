@@ -102,6 +102,10 @@ scratch. This page gets rid of all links and provides the needed markup only.
     font-size: 14px;
     font-weight: 400;
 }
+
+body .modal-dialog {
+    width: 60%;
+}
 </style>
 </head>
 <!--
@@ -358,6 +362,93 @@ desired effect
 				
 			</div>
 			
+			<!-- Tests -->
+			<div class="row">
+				<section class="col-lg-12">			
+					<div id="search" class="panel-group">
+					  <div class="panel panel-info">
+					    <div class="panel-heading">
+					      <h4 class="panel-title">
+					        <a data-toggle="collapse" href="#collapse_tests"><span class="fa fa-refresh"></span> Tests</a>
+					      </h4>
+					    </div>
+					    <div id="collapse_tests" class="panel-collapse collapse">
+						    <div class="panel-body">	
+						    	<table id="tests" class="table table-bordered table-striped dt-responsive" width="100%" cellspacing="0">
+					              <thead>
+					              <tr>
+					                <th>Status</th>
+					                <th>Name</th>
+					                <th>Author</th>
+					                <th>Rule</th>               
+					                <th>Last Modified</th>
+					                <th>Created</th>
+					                <th>Actions</th>
+					              </tr>
+					              </thead>
+					              <tbody>              
+					              </tbody>
+					           </table>			    
+							</div>				    
+					    </div>
+					  </div>
+					</div>			
+				</section>				
+			</div>
+			
+			<div class="modal fade" id="confirm-action" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+		    <div class="modal-dialog">
+		        <div class="modal-content">
+		            <div class="modal-header">
+		            </div>
+		            <div class="modal-body">
+		              <form class="form-horizontal" role="form">
+				        <fieldset>
+				          <!-- Text input-->
+				          <div id="confirm-test-name" class="form-group">
+				            <label class="col-sm-1 control-label" for="textinput">Test name</label>
+				            <div class="col-sm-10">
+				              <input type="text" id="new-test-name" placeholder="MyFile" class="form-control">
+				            </div>
+				          </div>	
+				          <span id="modal-message"></span>			          			
+				        </fieldset>		        
+				      </form>	
+		            </div>
+		            <div class="modal-footer">
+		                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+		                <a class="btn btn-danger btn-ok" OnClick="">Confirm</a>
+		            </div>
+		        </div>
+		    </div>
+		  </div>
+		  
+		  <div class="modal fade" id="edit-test" tabindex="-1" role="dialog" aria-labelledby="myModalLabel2" aria-hidden="true">
+		    <div class="modal-dialog">
+		        <div class="modal-content">
+		            <div class="modal-header">
+				    </div>
+		            <div class="modal-body">
+				      <form class="form-horizontal" role="form">
+				        <fieldset>
+				          <!-- Text input-->
+				          <div class="form-group">
+				            <label class="col-sm-1 control-label" for="textinput">Name</label>
+				            <div class="col-sm-10">
+				              <input type="text" id="new-test-name" placeholder="MyTest" class="form-control">
+				            </div>
+				          </div>				          			
+				        </fieldset>			        
+				      </form>				      
+		            </div>
+		            <div class="modal-footer">
+		                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+		                <a class="btn btn-danger btn-ok" OnClick="">Confirm</a>
+		            </div>
+		        </div>
+		    </div>
+		  </div>
+			
 		</section>
 		</form>
 		<!-- /.content -->
@@ -447,6 +538,144 @@ function search_threat(request, response)
 		function(message, error) {
 		}		
 	  );
+}
+
+//=============================================================
+	
+function testset_delete(id)
+{
+  Pace.start();
+  delete_testset(id, 
+	function(data, code) {		
+		$('#confirm-action').modal('hide');	
+		$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Test set removed.</div>');
+		
+		Pace.stop();
+		refresh_tests();
+	},
+	function(message, error) {
+		$('#confirm-action').modal('hide');
+		$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove test set</div>');
+	}		
+  );	
+}
+
+function testset_run(id)
+{	  
+  Pace.start();
+  run_testset( id,
+	function(data, code) {		
+		$('#edit-test').modal('hide');	
+		if (data == 'failed') {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Test failed, please open to fix</div>');
+		}
+		else {		  	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Tests passed.</div>');
+		}	
+		Pace.stop();
+		refresh_tests();
+	},
+	function(message, error) {
+		$('#edit-file').modal('hide');
+		$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to run tests</div>');
+	}		
+  );
+}
+
+function testset_open(id)
+{
+  window.open("<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>test.php?id=" + id);
+}
+
+function testset_add()
+{
+  var name 		= $('#edit-test').find('input#new-test-name').val();
+  var rule_id 	= <?php echo $rule_id ? $rule_id : -1 ?>;
+  
+  Pace.start();
+  add_testset( name, rule_id,
+	function(data, code) {		
+		$('#edit-test').modal('hide');	
+		
+		var testset_name = data.name;
+		$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Tests Set ' + testset_name + ' created.</div>');
+		
+		Pace.stop();
+		refresh_tests();
+	},
+	function(message, error) {
+		$('#edit-test').modal('hide');
+		$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to add tests set</div>');
+	}		
+  );
+}
+
+function testset_update(id)
+{
+  var name 		= $('#edit-test').find('input#new-test-name').val();
+  var rule_id 	= <?php echo $rule_id ? $rule_id : -1 ?>;
+  
+  Pace.start();
+  update_testset( id, name, rule_id,
+	function(data, code) {		
+		$('#edit-test').modal('hide');	
+		
+		var testset_name 	= data.name;
+		$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Tests set ' + testset_name + ' updated.</div>');
+		
+		Pace.stop();
+		refresh_tests();
+	},
+	function(message, error) {
+		$('#edit-test').modal('hide');
+		$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to update tests set</div>');
+	}		
+  );
+}
+	  
+function confirm_testset_delete(id)
+{
+  $('#confirm-action').find('#confirm-test-name').hide();
+  $('#confirm-action').find('#new-test-name').val("");	
+  $('#confirm-action').find('.modal-header').html("Tests Set removal");
+  $('#confirm-action').find('#modal-message').html("This will remove the tests set and ALL THE TESTS inside, do you want to proceed?");	  
+  $('#confirm-action').find('.btn-ok').attr('OnClick', 'testset_delete(' + id + ')');
+  $('#confirm-action').modal('show');
+}
+
+function refresh_tests() 
+{
+  $('#tests').DataTable().ajax.reload();
+}
+
+function show_add_testset()
+{
+  $('#edit-test').find('.modal-header').html("Add Test Set");
+  $('#edit-test').find('input#new-test-name').val("");
+  $('#edit-test').find('.btn-ok').attr('OnClick', 'testset_add()');
+  $('#edit-test').modal('show');	
+  $('#edit-test').find('#new-test-name').focus();  
+}
+
+function show_update_testset(id)
+{
+  Pace.start();
+  get_testset(id,
+	function(data, code) {		
+		Pace.stop();
+
+		var label = data.rule_name + ' (#' + data.rule_id + ')';
+		$('#edit-test').find('.modal-header').html("Edit Test Set");
+		$('#edit-test').find('input#new-test-name').val(data.name);
+		$('#edit-test').find('.btn-ok').attr('OnClick', 'testset_update(' + id + ')');			
+		$('#edit-test').modal('show');	
+		$('#edit-test').find('#new-test-name').focus(); 
+	},
+	function(message, error) {
+		$('#edit-test').modal('hide');
+		$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to get test set</div>');
+	}		
+  );
 }
 
 $(function () {
@@ -779,6 +1008,120 @@ $(function () {
     	onRuleFormChanged();
     } );
 
+ 	// Tests
+    // ===========================================================
+
+    var table_tests = $('#tests').DataTable({
+      dom: "Bfrtip",
+      paging: true,
+      lengthChange: true,
+      searching: true,
+      ordering: true,
+      info: true,
+      autoWidth: true,
+      processing: false,
+      serverSide: false,
+      responsive: true,
+      fnInitComplete: function (oSettings, json) {
+		  Pace.stop();
+      },
+      ajax: {
+		  type: "GET",
+		  dataType: "json",
+		  url: "api.php",
+		  data: function( data ) {
+			  data.action 			= 'gettestsettable';
+			  data.rule_id			= <?php echo $rule_id ? $rule_id : -1 ?>;
+		  },
+	  },   
+      columns: [
+    	  { 
+  			data: "status",
+  			width: "10%",
+  			render: function (data, type, row) 
+  	    	{
+  				var text_label 	= data;
+				if (data != undefined) {
+					var class_label = 'label-primary';
+					if (data == 'idle') {
+						class_label = 'label-primary';
+						text_label  = 'Idle';
+					}	
+					else if (data == 'passed') {
+						class_label = 'label-success';
+						text_label  = 'Passed';
+					}
+					else if (data == 'failed') {
+						class_label = 'label-danger';
+						text_label  = 'Failed';
+					}		
+					return "<span class='label " + class_label + "' style='font-size: 12px;'>" + text_label + "</span>";
+				}
+				else {
+					return "";
+				}
+  	        }
+  	    },
+    	{ 
+	    	data: "name", 
+	    	width: "20%",
+	    	render: function (data, type, row) 
+	    	{
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>test.php?id=" + row.id + "'>" + data + " (#" + row.id + ")" + "</a>";
+	        }
+	    },
+	    { 
+	    	data: "author", 
+	    	width: "10%"
+	    },
+	    { 
+	    	data: "rule_name", 
+	    	width: "25%",
+	    	render: function (data, type, row) 
+	    	{
+	    		return "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.rule_id + "'>" + data + " (#" + row.rule_id + ")" + "</a>";
+	        }
+	    },
+		{ data: "last_modified", width: "10%" },
+		{ data: "created", width: "10%" },
+		{ 
+	    	data: "action", 
+	    	width: "15%",
+	    	render: function (data, type, row) 
+	    	{
+	    		return ""
+	    		+ "<button type='button' class='btn btn-sm btn-success' data-toggle='tooltip' title='Run test' OnClick='testset_run(" + row.id + ")'>"
+	    		+ "<span class='fa fa-play table-menu'></span>"
+	    		+ "</button> "
+	    		+ "<button type='button' class='btn btn-sm btn-primary' data-toggle='tooltip' title='Open tests set' OnClick='testset_open(" + row.id + ")'>"
+	    		+ "<span class='fa fa-external-link table-menu'></span>"
+	    		+ "</button> "
+	    		+ "<button type='button' class='btn btn-sm btn-warning' data-toggle='tooltip' title='Edit tests set' OnClick='show_update_testset(" + row.id + ")'>"
+	    		+ "<span class='fa fa-pencil table-menu'></span>"
+	    		+ "</button> "
+	    		+ "<button type='button' class='btn btn-sm btn-danger' data-toggle='tooltip' title='Delete tests set' OnClick='confirm_testset_delete(" + row.id + ")'>"
+	    		+ "<span class='fa fa-trash table-menu'></span>"
+	    		+ "</button> ";
+	        }
+	    }
+      ],
+      order: [[ 4, "desc" ]],
+      select: true,
+      buttons: [
+        {
+        	text: "<i class='fa fa-plus'></i>",
+            titleAttr: 'Add Tests Set',
+            action: show_add_testset
+        },
+        {
+        	text: "<i class='fa fa-refresh'></i>",
+            titleAttr: 'Refresh',
+            action: refresh_tests
+        }
+        
+      ],
+    });  
+    	
     // Load rule
     loadRule(<?php if ($rule_id == "") { echo -1; } else { echo $rule_id; } ?>, <?php if ($file_id == "") { echo -1; } else { echo $file_id; } ?>);
 });

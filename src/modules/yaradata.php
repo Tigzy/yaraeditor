@@ -35,10 +35,26 @@ class YaraData extends IModule
 		else if ($data['test_type'] == 'string_unicode') {
 			$results = $this->TestStringUnicode($tmp_file, $data['test_data']);
 		}
+		else if ($data['test_type'] == 'buffer') {
+			$results = $this->TestBuffer($tmp_file, $data['test_data']);
+		}
+		else if ($data['test_type'] == 'file') {
+			$results = $this->TestFile($tmp_file, $data['test_data'], $data['storage_path']);
+		}
 		
 		$data['rule_test'] = json_decode($results);
 		unlink($tmp_file);
 	}	
+	
+	public function OnYaraParseString(&$data) 
+	{
+		if (!isset($data['content'])) {
+			return;
+		}	
+		
+		$results 			= $this->ParseStringContent($data['content']);				
+		$data['rules'] 		= json_decode($results);
+	}
 	
 	//=================================================
 	
@@ -67,6 +83,37 @@ class YaraData extends IModule
 		return $results;
 	}
 	
+	private function TestBuffer($sigs_file, $content)
+	{
+		// Convert to hex bytes
+		$content = hex2bin($content);
+		
+		$tmp_file = '';
+		if (!$this->DumpStringToTmp($content, $tmp_file)) {
+			return NULL;
+		}		
+		$results = $this->RunTest($sigs_file, $tmp_file);		
+		unlink($tmp_file);
+		return $results;
+	}
+	
+	private function TestFile($sigs_file, $content, $storage_path)
+	{		
+		$results = $this->RunTest($sigs_file, $storage_path . $content);	
+		return $results;
+	}
+	
+	private function ParseStringContent($content)
+	{
+		$tmp_file = '';
+		if (!$this->DumpStringToTmp($content, $tmp_file)) {
+			return NULL;
+		}		
+		$results = $this->ParseFile($tmp_file);		
+		unlink($tmp_file);
+		return $results;
+	}
+	
 	//=================================================
 	
 	private function CheckSyntax($sigs_file)
@@ -84,6 +131,18 @@ class YaraData extends IModule
 	private function RunTest($sigs_file, $test_file)
 	{		
 		$command = 'python "'.__DIR__.'/yara/yaraparse.py" --file "'.$sigs_file.'" --testitem "'.$test_file.'"';
+		ob_start();
+		system($command, $retcode);
+		$output = ob_get_contents();
+		ob_end_clean();
+		if ($retcode == 0 || $retcode == 1)
+			return $output;
+		return '';
+	}
+	
+	private function ParseFile($content_file)
+	{		
+		$command = 'python "'.__DIR__.'/yara/yaraparse.py" --file "'.$content_file.'" --parseitem';
 		ob_start();
 		system($command, $retcode);
 		$output = ob_get_contents();
