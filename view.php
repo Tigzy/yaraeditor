@@ -9,6 +9,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
   require_once(__DIR__."/src/lib/usercake/init.php");
   if (!UCUser::CanUserAccessUrl($_SERVER['PHP_SELF'])){die();}
   $user = UCUser::getCurrentUser();
+  $is_admin = UCUser::IsUserAdmin();
 ?>
 
 <?php 
@@ -36,6 +37,8 @@ scratch. This page gets rid of all links and provides the needed markup only.
 <link rel="stylesheet" href="plugins/font-awesome/css/font-awesome.min.css">
 <!-- Ionicons -->
 <link rel="stylesheet" href="plugins/ionicons/css/ionicons.min.css">
+<!-- Comments -->
+<link rel="stylesheet" href="plugins/jquery-comments/css/jquery-comments.css">
 <!-- DataTables -->
 <link rel="stylesheet" href="plugins/datatables/css/dataTables.bootstrap.css">
 <link rel="stylesheet" href="plugins/datatables/extensions/Buttons/css/buttons.bootstrap.min.css">
@@ -102,6 +105,16 @@ scratch. This page gets rid of all links and provides the needed markup only.
     padding: 4px 10px !important;
     font-size: 14px;
     font-weight: 400;
+}
+
+.wrapper
+{
+    background-color: white !important;
+}
+
+.wrapper > .content
+{
+    min-height: 0px !important;
 }
 </style>
 </head>
@@ -317,15 +330,23 @@ desired effect
 			</div>
 
 			<!-- Preview -->
-			<div class="row">
-
-				<section class="col-lg-12">
-					<div class="form-group">
-					  <label for="rule-name">Preview</label>
-					  <div id="preview" style="height: 350px; width: 100%"></div>	
-					</div>					
-				</section>
-				
+			<div class="row" style="padding-top: 10px;">
+				<section class="col-lg-12">			
+					<div id="div-preview" class="panel-group">
+					  <div class="panel panel-info">
+					    <div class="panel-heading">
+					      <h4 class="panel-title">
+					        <a data-toggle="collapse" href="#collapse_preview"><span class="fa fa-eye"></span> Preview</a>
+					      </h4>
+					    </div>
+					    <div id="collapse_preview" class="panel-collapse collapse in">
+						    <div class="panel-body">	
+						    	 <div id="preview" style="height: 350px; width: 100%"></div>				    
+							</div>				    
+					    </div>
+					  </div>
+					</div>			
+				</section>				
 			</div>
 			
 			<!-- Tests -->
@@ -336,6 +357,7 @@ desired effect
 					    <div class="panel-heading">
 					      <h4 class="panel-title">
 					        <a data-toggle="collapse" href="#collapse_tests"><span class="fa fa-refresh"></span> Tests</a>
+					        <span id="tests-badge" class="badge">0</span>
 					      </h4>
 					    </div>
 					    <div id="collapse_tests" class="panel-collapse collapse">
@@ -355,6 +377,27 @@ desired effect
 					              <tbody>              
 					              </tbody>
 					           </table>			    
+							</div>				    
+					    </div>
+					  </div>
+					</div>			
+				</section>				
+			</div>
+			
+			<!-- Comments -->
+			<div class="row">
+				<section class="col-lg-12">			
+					<div id="search" class="panel-group">
+					  <div class="panel panel-info">
+					    <div class="panel-heading">
+					      <h4 class="panel-title">
+					        <a data-toggle="collapse" href="#collapse_comments"><span class="fa fa-comment"></span> Comments</a>
+					        <span id="comments-badge" class="badge">0</span>
+					      </h4>
+					    </div>
+					    <div id="collapse_comments" class="panel-collapse collapse in">
+						    <div class="panel-body">	
+						    	<div id="comments"></div>		    
 							</div>				    
 					    </div>
 					  </div>
@@ -388,6 +431,8 @@ desired effect
 <script src="plugins/bootstrap/js/bootstrap.min.js"></script>
 <!-- PACE -->
 <script src="plugins/pace/pace.min.js"></script>
+<!-- Comments -->
+<script src="plugins/jquery-comments/js/jquery-comments.js"></script>
 <!-- ChartJS 2.2.2 -->
 <script src="plugins/chartjs/2.2.2/Chart.min.js"></script>
 <!-- FastClick -->
@@ -430,9 +475,71 @@ function rule_export(id)
 	  );
 }
 
+function comment_add(comment, success, error2)
+{
+	  Pace.start();
+	  add_comment( <?php echo $rule_id ?>, comment, 
+		function(data, code) {
+		    Pace.stop();
+	        success(comment);
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to post comment</div>');
+			error2();
+		}		
+	  );
+}
+
+function comment_edit(comment, success, error2)
+{
+	  Pace.start();
+	  edit_comment( comment, 
+		function(data, code) {
+		    Pace.stop();
+	        success(comment);
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to post comment</div>');
+			error2();
+		}		
+	  );
+}
+
+function comment_delete(comment, success, error2)
+{
+	  Pace.start();
+	  delete_comment( comment, 
+		function(data, code) {
+		    Pace.stop();
+	        success(comment);
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to delete comment</div>');
+			error2();
+		}		
+	  );
+}
+
+function refresh_comments(success, error2)
+{
+	  Pace.start();
+	  get_comments( <?php echo $rule_id ?>,
+		function(data, code) {		
+		  	$("#comments-badge").html(data.length.toString());
+		  	Pace.stop();
+	        success(data);
+		},
+		function(message, error) {
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to get comments</div>');
+			error2();
+		}		
+	  );
+}
+
 function refresh_tests() 
 {
   $('#tests').DataTable().ajax.reload();
+  $("#tests-badge").html($('#tests').DataTable().row().count());
 }
 
 function testset_open(id)
@@ -451,6 +558,33 @@ $(function () {
         highlightActiveLine: false,
         highlightGutterLine: false
     });
+
+	// Comments
+	$('#comments').comments({
+		<?php if( $is_admin ) { ?>
+		currentUserIsAdmin: true,
+		<?php } ?>
+		enableAttachments: false,
+		<?php if( $user == NULL ) { ?>
+		readOnly: true,
+		<?php } ?>
+		enablePinging: false,
+		enableNavigation: false,
+		enableReplying: true,
+		enableHashtags: true,
+		enableUpvoting: false,
+		forceResponsive: true,
+		roundProfilePictures: true,
+	    getComments: refresh_comments,
+	    postComment: comment_add,
+	    putComment: comment_edit,
+	    deleteComment: comment_delete
+	});
+
+	// Prevents top scrolling with clicking the buttons in dropdown-menu
+    $('.action').click(function(e) {
+    	e.preventDefault();
+    });	
     
 	// Tags
 	// https://maxfavilli.com/jquery-tag-manager	

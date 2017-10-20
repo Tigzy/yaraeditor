@@ -350,16 +350,24 @@ desired effect
 				</section>			
 			</div>
 
-			<!-- Preview -->
-			<div class="row">
-
-				<section class="col-lg-12">
-					<div class="form-group">
-					  <label for="rule-name">Preview</label>
-					  <div id="preview" style="height: 350px; width: 100%"></div>	
-					</div>					
-				</section>
-				
+			<!-- Preview -->			
+			<div class="row" style="padding-top: 10px;">
+				<section class="col-lg-12">			
+					<div id="div-preview" class="panel-group">
+					  <div class="panel panel-info">
+					    <div class="panel-heading">
+					      <h4 class="panel-title">
+					        <a data-toggle="collapse" href="#collapse_preview"><span class="fa fa-eye"></span> Preview</a>
+					      </h4>
+					    </div>
+					    <div id="collapse_preview" class="panel-collapse collapse in">
+						    <div class="panel-body">	
+						    	 <div id="preview" style="height: 350px; width: 100%"></div>				    
+							</div>				    
+					    </div>
+					  </div>
+					</div>			
+				</section>				
 			</div>
 			
 			<!-- Tests -->
@@ -370,6 +378,7 @@ desired effect
 					    <div class="panel-heading">
 					      <h4 class="panel-title">
 					        <a data-toggle="collapse" href="#collapse_tests"><span class="fa fa-refresh"></span> Tests</a>
+					        <span id="tests-badge" class="badge">0</span>
 					      </h4>
 					    </div>
 					    <div id="collapse_tests" class="panel-collapse collapse">
@@ -560,6 +569,31 @@ function testset_delete(id)
   );	
 }
 
+function testsets_delete()
+{
+	  var selected = $('#tests').DataTable().rows( { selected: true } );
+	  var selected_ids = [];
+	  selected.every( function ( index, tableLoop, rowLoop ) {
+		    var data = this.data();
+		    selected_ids.push(data.id);
+	  } );
+	  
+	  Pace.start();
+	  delete_testsets(selected_ids, 
+		function(data, code) {		
+		    $('#confirm-action').modal('hide');	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Test sets removed.</div>');
+			
+			Pace.stop();
+			refresh_tests();
+		},
+		function(message, error) {
+			$('#confirm-action').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove test sets</div>');
+		}		
+	  );	
+}
+
 function testset_run(id)
 {	  
   Pace.start();
@@ -643,9 +677,25 @@ function confirm_testset_delete(id)
   $('#confirm-action').modal('show');
 }
 
+function confirm_testsets_delete(id)
+{
+	  var count = $('#tests').DataTable().rows( { selected: true } ).count();
+	  if (count == 0) {
+	  	  return;
+	  }
+	  
+	  $('#confirm-action').find('#confirm-test-name').hide();
+	  $('#confirm-action').find('#new-test-name').val("");	
+	  $('#confirm-action').find('.modal-header').html("Tests Set removal");
+	  $('#confirm-action').find('#modal-message').html("This will remove the selected tests sets and ALL THE TESTS inside, do you want to proceed?");	  
+	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'testsets_delete()');
+	  $('#confirm-action').modal('show');
+}
+
 function refresh_tests() 
 {
   $('#tests').DataTable().ajax.reload();
+  $("#tests-badge").html($('#tests').DataTable().row().count());
 }
 
 function show_add_testset()
@@ -819,6 +869,7 @@ $(function () {
     var table_metas = $('#metas').DataTable({
         dom: "Bfrtip",
         paging: true,
+        pageLength: 5,
         lengthChange: true,
         searching: true,
         ordering: true,
@@ -941,6 +992,7 @@ $(function () {
     var table_strings = $('#strings').DataTable({
         dom: "Bfrtip",
         paging: true,
+        pageLength: 5,
         lengthChange: true,
         searching: true,
         ordering: true,
@@ -1014,6 +1066,7 @@ $(function () {
     var table_tests = $('#tests').DataTable({
       dom: "Bfrtip",
       paging: true,
+      pageLength: 5,
       lengthChange: true,
       searching: true,
       ordering: true,
@@ -1117,7 +1170,12 @@ $(function () {
         	text: "<i class='fa fa-refresh'></i>",
             titleAttr: 'Refresh',
             action: refresh_tests
-        }
+        },
+        {
+        	text: "<i class='fa fa-trash'></i>",
+            titleAttr: 'Delete',
+            action: confirm_testsets_delete
+        }  
         
       ],
     });  

@@ -258,7 +258,8 @@ def ParseFile(path):
         print encoded
     except Exception as ex:
         data = {}
-        data['valid'] = False            
+        data['valid'] = False
+        data['error'] = str(ex)
         print json.dumps(data)
         return 1
         

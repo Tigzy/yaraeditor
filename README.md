@@ -4,6 +4,14 @@ yaraeditor-web
 Malware Repository Framework
 Official page: http://www.adlice.com/download/yaraeditorweb/
 
+## Version 0.7
+Added Bulk actions  
+Added User commenting system  
+Added Search by tag (shortcut from stats page)  
+DB model refactoring for better performances  
+Fixed strings is empty error message  
+Minor fixes  
+
 ## Version 0.6
 Added Buffer test item  
 Added File test item (local storage)  

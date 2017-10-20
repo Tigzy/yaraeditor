@@ -260,6 +260,31 @@ desired effect
 	  );	
   }
 
+  function files_delete()
+  {
+  	  var selected = $('#files').DataTable().rows( { selected: true } );
+  	  var selected_ids = [];
+  	  selected.every( function ( index, tableLoop, rowLoop ) {
+  		    var data = this.data();
+  		    selected_ids.push(data.id);
+  	  } );
+  	
+  	  Pace.start();
+  		delete_files(selected_ids, 
+  		function(data, code) {		
+  			$('#confirm-action').modal('hide');	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Files removed.</div>');
+			
+			Pace.stop();
+			refresh_files();
+		},
+		function(message, error) {
+			$('#confirm-action').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove files</div>');
+		}		
+  	  );	
+  }
+
   function file_copy(id)
   {
 	  var file_name = $('#confirm-action').find('#new-file-name').val();	  
@@ -370,6 +395,22 @@ desired effect
 	  $('#confirm-action').modal('show');
   }
 
+  function confirm_files_delete(id)
+  {
+	  var count = $('#files').DataTable().rows( { selected: true } ).count();
+	  if (count == 0) {
+	  	  return;
+	  }
+	  
+	  $('#confirm-action').find('#confirm-file-name').hide();
+	  $('#confirm-action').find('#new-file-name').val("");	
+	  $('#confirm-action').find('.modal-header').html("Files removal");
+	  $('#confirm-action').find('#modal-message').html("This will remove the seleted files and ALL THE RULES inside, do you want to proceed?");	  
+	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'files_delete()');
+	  $('#confirm-action').modal('show');
+  }
+  
+
   function refresh_files() 
   {
       $('#files').DataTable().ajax.reload();
@@ -422,6 +463,7 @@ desired effect
 	table = $('#files').DataTable({
       dom: "Bfrtip",
       paging: true,
+      pageLength: 25,
       lengthChange: true,
       searching: true,
       ordering: true,
@@ -502,6 +544,11 @@ desired effect
         	text: "<i class='fa fa-plus'></i>",
             titleAttr: 'Add File',
             action: show_add_file
+        },
+        {
+        	  text: "<i class='fa fa-trash'></i>",
+            titleAttr: 'Delete',
+            action: confirm_files_delete
         }
       ],
     });    

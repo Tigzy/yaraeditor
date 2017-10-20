@@ -95,12 +95,12 @@ class UCDatabase
 	//===================================================
 	// Sessions Table
 	
-	public function GetSessionDataFromCookie($cookie_value)
+public function GetSessionDataFromCookie($cookie_value)
 	{
 		$stmt = $this->mysqli->prepare("SELECT sessionData FROM ".$this->prefix."sessions WHERE sessionID = ?");
 		$stmt->bind_param("s", $cookie_value);
 		$stmt->execute();
-		$stmt->bind_result($sessionData);
+		$stmt->bind_result($sessionData);	
 		$row = array();
 		while ($stmt->fetch()) {
 			$row = array('sessionData' => $sessionData);

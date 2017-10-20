@@ -266,6 +266,31 @@ function do_clear_recycle_bin()
 	  );
 }
 
+function items_delete()
+{
+	  var selected = $('#rules').DataTable().rows( { selected: true } );
+	  var selected_ids = [];
+	  selected.every( function ( index, tableLoop, rowLoop ) {
+		    var data = this.data();
+		    selected_ids.push(data.id);
+	  } );
+	
+	  Pace.start();
+	  delete_rules_from_recycle_bin(selected_ids, 
+		function(data, code) {		
+		    $('#confirm-action').modal('hide');	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rules removed.</div>');
+			
+			Pace.stop();
+			refresh_recycle_bin();
+		},
+		function(message, error) {
+			$('#confirm-action').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove rules</div>');
+		}		
+	  );
+}
+
 function rule_delete(id)
 {
 	  Pace.start();
@@ -311,6 +336,20 @@ function confirm_clear_recycle_bin()
 	  $('#confirm-action').modal('show');
 }
 
+function confirm_items_delete()
+{
+	  var count = $('#rules').DataTable().rows( { selected: true } ).count();
+	  if (count == 0) {
+	  	  return;
+	  }
+	
+	  $('#confirm-action').find('.modal-header').html("Remove recycled items");
+	  $('#confirm-action').find('#modal-message').html("This will remove selected entries, do you want to proceed?");	 
+	  $('#confirm-action').find('.btn-ok').show(); 
+	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'items_delete()');
+	  $('#confirm-action').modal('show');
+}
+
 function confirm_rule_delete(id)
 {
 	  $('#confirm-action').find('#confirm-file-name').hide();
@@ -344,6 +383,7 @@ function initRecycleTable()
   table = $('#rules').DataTable({
       dom: "Bfrtip",
       paging: true,
+      pageLength: 25,
       lengthChange: true,
       searching: true,
       ordering: true,
@@ -424,7 +464,7 @@ function initRecycleTable()
       select: true,
       buttons: [
           {
-        	  text: "<i class='fa fa-trash'></i>",
+        	  text: "<i class='fa fa-ban'></i>",
               titleAttr: 'Clear Recycle Bin',
               action: confirm_clear_recycle_bin
           },
@@ -432,6 +472,11 @@ function initRecycleTable()
         	  text: "<i class='fa fa-refresh'></i>",
               titleAttr: 'Refresh',
 			  action: refresh_recycle_bin
+          },
+          {
+          	  text: "<i class='fa fa-trash'></i>",
+              titleAttr: 'Delete',
+              action: confirm_items_delete
           }
       ]
   });  

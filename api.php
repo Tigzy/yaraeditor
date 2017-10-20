@@ -305,7 +305,6 @@ class Rest_Api extends Rest_Rest {
 		// Sanity check, #2 check for mandatory fields
 		if (empty($rule_content->file_id)) {$this->response('file cannot be empty',400); return false; }
 		if ($rule_content->name == "") {$this->response('rulename cannot be empty',400); return false; }
-		if (empty($rule_content->strings)) {$this->response('strings cannot be empty',400); return false; }
 		if ($rule_content->condition == "") {$this->response('condition cannot be empty',400); return false; }
 				
 		$data 		= new stdClass();		
@@ -343,6 +342,24 @@ class Rest_Api extends Rest_Rest {
 		}
 		else {
 			$this->response('Unable to delete file',406); 
+			return false;
+		}
+	}
+	
+	public function deletefiles() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$file_ids = $this->getParameter("ids");
+		if (is_null($file_ids)) {$this->response('missing ids parameter',400); return false; }
+		
+		$core = $this->getCore();
+		if ($core->DeleteFiles($file_ids)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to delete files',406); 
 			return false;
 		}
 	}
@@ -440,6 +457,24 @@ class Rest_Api extends Rest_Rest {
 		}
 	}
 	
+	public function moverulesrecyclebin() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$rule_ids = $this->getParameter("ids");
+		if (is_null($rule_ids)) {$this->response('missing ids parameter',400); return false; }
+		
+		$core = $this->getCore();
+		if ($core->MoveRulesToRecycleBin($rule_ids)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to move rules to recycle bin',406); 
+			return false;
+		}
+	}
+	
 	public function deleterule() 
 	{
 		$this->validateKey();
@@ -454,6 +489,24 @@ class Rest_Api extends Rest_Rest {
 		}
 		else {
 			$this->response('Unable to delete rule',406); 
+			return false;
+		}
+	}
+	
+	public function deleterules() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$rule_ids = $this->getParameter("ids");
+		if (is_null($rule_ids)) {$this->response('missing ids parameter',400); return false; }
+		
+		$core = $this->getCore();
+		if ($core->DeleteRules($rule_ids)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to delete rules',406); 
 			return false;
 		}
 	}
@@ -790,6 +843,25 @@ class Rest_Api extends Rest_Rest {
 		}
 	}
 	
+	public function deletetestsets() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$testset_ids = $this->getParameter("ids");
+		if (is_null($testset_ids)) {$this->response('missing ids parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();
+		if ($core->DeleteTestSets($testset_ids)) {		
+			$this->response("{}",200);
+		}
+		else {
+			$this->response('Unable to delete tests sets',406); 
+			return false;
+		}
+	}
+	
 	public function addtest() 
 	{
 		$this->validateKey();
@@ -966,6 +1038,101 @@ class Rest_Api extends Rest_Rest {
 			return false;
 		}
 		$this->response(json_encode($data),200);
+	}
+	
+	public function getcomments() 
+	{
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$rule_id = $this->getParameter("id");
+		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }	
+		
+		// Get results
+		$core = $this->getCore();	
+		$data = $core->GetComments($rule_id);
+		if (!is_array($data) || is_null($data)) {
+			$this->response("unable to find comments",403);
+			return false;
+		}
+		$this->response(json_encode($data),200);
+	}
+	
+	public function addcomment() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$rule_id = $this->getParameter("id");
+		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }
+		
+		$comment_data = $this->getParameter("comment");
+		if (is_null($comment_data)) {$this->response('missing comment parameter',400); return false; }	
+		if (!isset($comment_data['content'])) 	{$this->response('missing content parameter',400); return false; }	
+		if (!isset($comment_data['parent'])) 	{$this->response('missing content parameter',400); return false; }	
+		
+		$comment = $comment_data['content'];
+		$parent  = empty($comment_data['parent']) ? -1 : intval($comment_data['parent']);
+		$pings 	 = '';
+		
+		// Get results
+		$core = $this->getCore();	
+		$id   = $core->AddComment($rule_id, $parent, $pings, $comment);
+		if ($id == 0) {
+			$this->response('Unable to add comment',406); 
+			return false;
+		}
+		
+		$data 		= new stdClass();
+		$data->id 	= $id;		
+		$this->response(json_encode($data),201);
+	}
+	
+	public function editcomment() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$comment_data = $this->getParameter("comment");
+		if (is_null($comment_data)) {$this->response('missing comment parameter',400); return false; }	
+		if (!isset($comment_data['id'])) 		{$this->response('missing id parameter',400); return false; }	
+		if (!isset($comment_data['content'])) 	{$this->response('missing content parameter',400); return false; }		
+		
+		$comment_id = $comment_data['id'];
+		$comment = $comment_data['content'];
+		$pings 	 = '';
+		
+		// Get results
+		$core = $this->getCore();	
+		$success = $core->UpdateComment($comment_id, $pings, $comment);
+		if (!$success) {
+			$this->response("unable to update comment",403);
+			return false;
+		}
+		
+		$data 		= new stdClass();
+		$data->id 	= $comment_id;		
+		$this->response(json_encode($data),201);
+	}
+	
+	public function deletecomment() 
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }	
+		
+		$comment_data = $this->getParameter("comment");
+		if (is_null($comment_data)) {$this->response('missing comment parameter',400); return false; }	
+		if (!isset($comment_data['id'])) 		{$this->response('missing id parameter',400); return false; }		
+		
+		$comment_id = $comment_data['id'];
+		
+		// Get results
+		$core = $this->getCore();	
+		$success = $core->DeleteComment($comment_id);
+		if (!$success) {
+			$this->response("unable to delete comment",403);
+			return false;
+		}
+		$this->response("{}",200);
 	}
 }
 

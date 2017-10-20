@@ -317,6 +317,7 @@ function initHistoryTable()
   table = $('#history').DataTable({
       dom: "Bfrtip",
       paging: true,
+      pageLength: 25,
       lengthChange: true,
       searching: true,
       ordering: true,
@@ -335,6 +336,7 @@ function initHistoryTable()
 		  url: "api.php",
 		  data: function( data ) {
 			  data.action 	= 'gethistory';
+			  data.limit    = 100;
 		  }
 	  },   
       columns: [
@@ -354,7 +356,10 @@ function initHistoryTable()
 					} else if (data == 'rule') {
 						icon_label = 'fa-star';
 						text_label  = 'Rule';
-					}						
+					} else if (data == 'comment') {
+						icon_label = 'fa-comment';
+						text_label  = 'Comment';
+					}					
 					return "<span class='fa " + icon_label + " table-menu'></span> " + text_label;
 				}
 				else {
@@ -368,7 +373,7 @@ function initHistoryTable()
 			render: function (data, type, row) 
 	    	{
 				var text_label 	= data;
-				if (row.action == 'delete') {
+				if (row.action == 'delete' && row.item_type != 'comment') {
 					text_label  = "<i><span class='fa fa-lock table-menu' data-toggle='tooltip' title='Removed items cannot be open' style='padding-right: 5px;'></span> " + text_label + "</i>";
 				}	
 				else if (row.action == 'recyclebin') {
@@ -379,6 +384,9 @@ function initHistoryTable()
 					text_label  = "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>file.php?id=" + row.item_id + "'>" + text_label + " (#" + row.item_id + ")" + "</a>";
 				}
 				else if (row.item_type == 'rule') {
+					text_label  = "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.item_id + "'>" + text_label + " (#" + row.item_id + ")" + "</a>";
+				}
+				else if (row.item_type == 'comment') {
 					text_label  = "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + row.item_id + "'>" + text_label + " (#" + row.item_id + ")" + "</a>";
 				}
 				return text_label;
@@ -434,7 +442,7 @@ function initHistoryTable()
       select: true,
       buttons: [
           {
-        	  text: "<i class='fa fa-trash'></i>",
+        	  text: "<i class='fa fa-ban'></i>",
               titleAttr: 'Clear History',
               action: confirm_clear_history
           },

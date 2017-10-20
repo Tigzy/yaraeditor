@@ -65,6 +65,9 @@ class YEdCore
 		else if ($permission == 'add') {
 			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
 		}
+		else if ($permission == 'add_comment') {
+			return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_contributor, self::perm_user_manager, self::perm_user_publisher));
+		}
 		else if ($permission == 'edit' && $item_id) {
 			$rule = $this->GetRule($item_id);
 			if (!$rule) return False;			
@@ -113,6 +116,12 @@ class YEdCore
 			else {
 				$set = $this->GetTestSet($test["set_id"]);
 			}			
+			if (!$set) return False;	
+			if ($set["author"] == $user && UCUser::ValidateUserPermission($user, array(self::perm_user_contributor))) return True;	// Contributor can only edit own rules
+			else return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
+		}
+		else if ($permission == 'edit_comment') {
+			$set = $this->GetComment($item_id);		
 			if (!$set) return False;	
 			if ($set["author"] == $user && UCUser::ValidateUserPermission($user, array(self::perm_user_contributor))) return True;	// Contributor can only edit own rules
 			else return UCUser::ValidateUserPermission($user, array(self::perm_user_admin, self::perm_user_manager, self::perm_user_publisher));
@@ -371,6 +380,24 @@ class YEdCore
 		return $success;
 	}
 	
+	public function DeleteFiles($ids)
+	{
+		if (!is_array($ids)) {
+			return False;
+		}	
+		// Verify first
+		foreach($ids as $id) {
+			if (!$this->CheckPermissions('edit_file', $id))
+				return False;
+		}
+		// Do actual removal
+		foreach($ids as $id) {
+			if (!$this->DeleteFile($id))
+				return False;
+		}
+		return True;
+	}
+	
 	public function CopyFile($file_id, &$new_name)
 	{
 		if (!$this->CheckPermissions('edit_file'))
@@ -453,13 +480,7 @@ class YEdCore
 		
 		$rule = $this->database->GetRule($rule_id);
 		if (empty($rule)) return NULL;
-		
-		// Special metas
-		$rule["author_id"] 	= $this->database->GetRuleMetaValue($rule_id, "__author");
-		$rule["comment"] 	= $this->database->GetRuleMetaValue($rule_id, "__comment");
-		$rule["threat"] 	= $this->database->GetRuleMetaValue($rule_id, "__threat");
-		$rule["is_public"] 	= $this->database->GetRuleMetaValue($rule_id, "__public");
-		
+
 		// Retrieve author information
 		$rule_user 			= new UCUser($rule["author_id"], true);		
 		$rule["author"] 	= $rule_user->DisplayName();
@@ -483,10 +504,7 @@ class YEdCore
 			return 0;
 		}
 		
-		$this->database->CreateRuleMeta($id, "__author", $rule_content->author_id);
-		$this->database->CreateRuleMeta($id, "__comment", $rule_content->comment);
-		$this->database->CreateRuleMeta($id, "__threat", trim($rule_content->threat, '"'));
-		$this->database->CreateRuleMeta($id, "__public", $rule_content->is_public);
+		$rule_content->threat = trim($rule_content->threat, '"');
 		
 		// Create metas
 		foreach($rule_content->metas as $meta)
@@ -513,12 +531,7 @@ class YEdCore
 			return False;
 		
 		$old_value = $this->GetRule($rule_id);
-		$success = $this->database->UpdateRule($rule_id, $rule_content);	
-		
-		$this->database->UpdateRuleMeta($rule_id, "__author", $rule_content->author_id);
-		$this->database->UpdateRuleMeta($rule_id, "__comment", $rule_content->comment);
-		$this->database->UpdateRuleMeta($rule_id, "__threat", trim($rule_content->threat, '"'));
-		$this->database->UpdateRuleMeta($rule_id, "__public", $rule_content->is_public);
+		$success = $this->database->UpdateRule($rule_id, $rule_content);
 		
 		// Update metas
 		//================================
@@ -597,6 +610,24 @@ class YEdCore
 		return $success;
 	}
 	
+	public function DeleteRules($ids)
+	{
+		if (!is_array($ids)) {
+			return False;
+		}	
+		// Verify first
+		foreach($ids as $id) {
+			if (!$this->CheckPermissions('edit', $id))
+				return False;
+		}
+		// Do actual removal
+		foreach($ids as $id) {
+			if (!$this->DeleteRule($id))
+				return False;
+		}
+		return True;
+	}
+	
 	public function MoveRuleToRecycleBin($rule_id)
 	{
 		if (!$this->CheckPermissions('edit', $rule_id))
@@ -609,6 +640,24 @@ class YEdCore
 			$this->AddRuleActionToHistory('recyclebin', $rule_id, $rule["name"], NULL, $rule);
 		}
 		return $success;
+	}
+	
+	public function MoveRulesToRecycleBin($ids)
+	{
+		if (!is_array($ids)) {
+			return False;
+		}	
+		// Verify first
+		foreach($ids as $id) {
+			if (!$this->CheckPermissions('edit', $id))
+				return False;
+		}
+		// Do actual removal
+		foreach($ids as $id) {
+			if (!$this->MoveRuleToRecycleBin($id))
+				return False;
+		}
+		return True;
 	}
 	
 	public function RestoreRule($rule_id)
@@ -747,6 +796,24 @@ class YEdCore
 			return False;
 		
 		return $this->database->DeleteTestSet($id);
+	}
+	
+	public function DeleteTestSets($ids)
+	{
+		if (!is_array($ids)) {
+			return False;
+		}	
+		// Verify first
+		foreach($ids as $id) {
+			if (!$this->CheckPermissions('edit_testset', $id))
+				return False;
+		}
+		// Do actual removal
+		foreach($ids as $id) {
+			if (!$this->DeleteTestSet($id))
+				return False;
+		}
+		return True;
 	}
 	
 	public function RunTestSet($id)
@@ -1059,6 +1126,113 @@ class YEdCore
 		$item->item_value 	= json_encode($rule_value);	
 		$item->item_oldvalue = json_encode($rule_old_value);		
 		return $this->database->AddToHistory($item);
+	}
+	
+	public function AddCommentActionToHistory($action, $rule_id, $rule_name, $comment_value = array(), $comment_old_value = array())
+	{
+		global $user;		
+		$item 				= new stdClass();
+		$item->user 		= $user->Id();
+		$item->action 		= $action;
+		$item->item_id 		= $rule_id;
+		$item->item_type    = 'comment';
+		$item->item_name 	= $rule_name;
+		$item->item_value 	= json_encode($comment_value);	
+		$item->item_oldvalue = json_encode($comment_old_value);		
+		return $this->database->AddToHistory($item);
+	}
+	
+	//====================================================	
+	
+	public function GetComment($comment_id)
+	{
+		if (!$this->CheckPermissions('read'))
+			return NULL;
+		
+		$comment 	= $this->database->GetComment($comment_id);
+		$users 		= $this->GetUsers();
+		
+		global $user;		
+		
+		$comment["fullname"] = "";
+		foreach($users as $user2)
+		{
+			if ($user2["id"] == $comment["author"]) {
+				$comment["fullname"] = $user2["display_name"];		
+				$comment["profile_picture_url"] = empty($user2["avatar"]) ? "" : ("data:image/png;base64," . $user2["avatar"]);
+			}
+		}
+		$comment["created_by_current_user"]  = ($user->Id() == $comment["author"]) ? True : False;
+		$comment["user_has_upvoted"] 	  	 = False; //TODO
+		
+		return $comment;
+	}
+	
+	public function GetComments($rule_id)
+	{
+		if (!$this->CheckPermissions('read'))
+			return NULL;
+		
+		$comments 	= $this->database->GetComments($rule_id);
+		$users 		= $this->GetUsers();
+		
+		global $user;		
+		foreach($comments as &$item)
+		{
+			$item["fullname"] = "";
+			foreach($users as $user2)
+			{
+				if ($user2["id"] == $item["author"]) {
+					$item["fullname"] 			 = $user2["display_name"];	
+					$item["profile_picture_url"] = empty($user2["avatar"]) ? "" : ("data:image/png;base64," . $user2["avatar"]);
+				}
+			}
+			$item["created_by_current_user"] = ($user->Id() == $item["author"]) ? True : False;
+			$item["user_has_upvoted"] 	     = False; //TODO
+		}	
+		return $comments;
+	}
+	
+	public function AddComment($rule_id, $parent, $pings, $comment)
+	{
+		if (!$this->CheckPermissions('add_comment'))
+			return NULL;
+		
+		global $user;
+		$id = $this->database->AddComment($rule_id, $parent, $comment, $pings, $user->Id());
+		if ($id != 0) {
+			$rule = $this->GetRule($rule_id);
+			$this->AddCommentActionToHistory('add', $rule_id, $rule["name"], $this->GetComment($id), NULL);
+		}
+		return $id;
+	}
+	
+	public function UpdateComment($comment_id, $pings, $comment)
+	{
+		if (!$this->CheckPermissions('edit_comment'))
+			return NULL;
+		
+		$old_value = $this->GetComment($comment_id);
+		$success = $this->database->UpdateComment($comment_id, $comment, $pings);
+		if ($success) {
+			$rule 	 = $this->GetRule($old_value["rule_id"]);
+			$this->AddCommentActionToHistory('edit', $rule["id"], $rule["name"], $this->GetComment($comment_id), $old_value);	
+		}
+		return $success;
+	}
+	
+	public function DeleteComment($comment_id)
+	{
+		if (!$this->CheckPermissions('edit_comment'))
+			return NULL;
+		
+		$old_value = $this->GetComment($comment_id);
+		$success = $this->database->DeleteComment($comment_id);
+		if ($success) {
+			$rule = $this->GetRule($old_value["rule_id"]);
+			$this->AddCommentActionToHistory('delete', $rule["id"], $rule["name"], NULL, $old_value);
+		}
+		return $success;
 	}
 	
 	//====================================================

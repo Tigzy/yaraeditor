@@ -143,6 +143,22 @@ function delete_rule(rule_id, onSuccess, onFailure)
 	});
 }
 
+function delete_rules(rule_ids, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=moverulesrecyclebin',
+		dataType: 'json',	
+		data: {ids: rule_ids},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
 function restore_rule(rule_id, onSuccess, onFailure)
 {
 	return $.ajax({
@@ -165,6 +181,22 @@ function delete_rule_from_recycle_bin(rule_id, onSuccess, onFailure)
 		url: 'api.php?action=deleterule',
 		dataType: 'json',	
 		data: {id: rule_id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function delete_rules_from_recycle_bin(rule_ids, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=deleterules',
+		dataType: 'json',	
+		data: {ids: rule_ids},	
 		type: 'post',
 		success: function(data, textStatus, xhr) { 
 			if (onSuccess) onSuccess(data, xhr.status); 		
@@ -228,6 +260,22 @@ function delete_file(file_id, onSuccess, onFailure)
 		url: 'api.php?action=deletefile',
 		dataType: 'json',	
 		data: {id: file_id},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function delete_files(file_ids, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=deletefiles',
+		dataType: 'json',	
+		data: {ids: file_ids},	
 		type: 'post',
 		success: function(data, textStatus, xhr) { 
 			if (onSuccess) onSuccess(data, xhr.status); 		
@@ -412,6 +460,22 @@ function delete_testset(id, onSuccess, onFailure)
 	});
 }
 
+function delete_testsets(ids, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=deletetestsets',
+		dataType: 'json',	
+		data: {ids: ids},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
 function add_test(testset_id, type, content, onSuccess, onFailure)
 {
 	return $.ajax({
@@ -524,6 +588,70 @@ function run_testset(id, onSuccess, onFailure)
 	});
 }
 
+function get_comments(rule_id, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=getcomments',
+		dataType: 'json',	
+		data: {id: rule_id},	
+		type: 'get',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function add_comment(rule_id, comment, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=addcomment',
+		dataType: 'json',	
+		data: {id: rule_id, comment: comment},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function edit_comment(comment, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=editcomment',
+		dataType: 'json',	
+		data: {comment: comment},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function delete_comment(comment, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=deletecomment',
+		dataType: 'json',	
+		data: {comment: comment},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
 //================================================
 // UI functions
 
@@ -611,7 +739,11 @@ function loadRule(rule_id, file_id) {
 			else {
 				if (file_id != -1) {
 					$("select#rule-file").val( file_id );
-				}				
+				}	
+				
+				// Condition
+				$("input#condition").val( 'any of them' );
+				
 				refreshRulePreview();
 			}
 		},

@@ -376,7 +376,7 @@ function refreshUploaders()
             + (value.avatar ? "<img alt='' height='72px' width='72px' class='img-circle' src='data:image/png;base64," + value.avatar + "'>"
             : "<img alt='' height='72px' width='72px' class='img-cicrle' src='dist/img/noavatar.jpg'>")
             + "<a class='users-list-name' href='#'>" + value.name + "</a>"
-            + "<span class='users-list-date'>" + value.count + " files</span>"
+            + "<span class='users-list-date'>" + value.count + " rules</span>"
             + "</li>";
 			$(".users-list").append(user_display);
 	    });
@@ -392,7 +392,7 @@ function refreshTags()
 			var word 	= {};
 			word.text 	= key;
 			word.weight = value;
-			word.link	= { href: 'index.php?tag=' + key, target: "_blank" };
+			word.link	= { href: 'search.php?tag=' + key, target: "_blank" };
 			words.push(word);
 		});
 	    $c.jQCloud(words);
@@ -406,6 +406,7 @@ function refreshLastRules()
 	table = $('#last-rules').DataTable({
       dom: "frtip",
       paging: true,
+      pageLength: 25,
       lengthChange: true,
       searching: true,
       ordering: true,

@@ -288,6 +288,31 @@ desired effect
 	  );	
   }
 
+  function testsets_delete()
+  {
+	  var selected = $('#tests').DataTable().rows( { selected: true } );
+	  var selected_ids = [];
+	  selected.every( function ( index, tableLoop, rowLoop ) {
+		    var data = this.data();
+		    selected_ids.push(data.id);
+	  } );
+	  
+	  Pace.start();
+	  delete_testsets(selected_ids, 
+		function(data, code) {		
+		    $('#confirm-action').modal('hide');	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Test sets removed.</div>');
+			
+			Pace.stop();
+			refresh_tests();
+		},
+		function(message, error) {
+			$('#confirm-action').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove test sets</div>');
+		}		
+	  );	
+  }
+
   function testset_run(id)
   {	  
 	  Pace.start();
@@ -371,6 +396,21 @@ desired effect
 	  $('#confirm-action').modal('show');
   }
 
+  function confirm_testsets_delete(id)
+  {
+	  var count = $('#tests').DataTable().rows( { selected: true } ).count();
+	  if (count == 0) {
+	  	  return;
+	  }
+	  
+	  $('#confirm-action').find('#confirm-test-name').hide();
+	  $('#confirm-action').find('#new-test-name').val("");	
+	  $('#confirm-action').find('.modal-header').html("Tests Set removal");
+	  $('#confirm-action').find('#modal-message').html("This will remove the selected tests sets and ALL THE TESTS inside, do you want to proceed?");	  
+	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'testsets_delete()');
+	  $('#confirm-action').modal('show');
+  }
+
   function refresh_tests() 
   {
       $('#tests').DataTable().ajax.reload();
@@ -433,6 +473,7 @@ desired effect
 	table = $('#tests').DataTable({
       dom: "Bfrtip",
       paging: true,
+      pageLength: 25,
       lengthChange: true,
       searching: true,
       ordering: true,
@@ -536,8 +577,12 @@ desired effect
         	text: "<i class='fa fa-refresh'></i>",
             titleAttr: 'Refresh',
             action: refresh_tests
-        }
-        
+        },
+        {
+        	text: "<i class='fa fa-trash'></i>",
+            titleAttr: 'Delete',
+            action: confirm_testsets_delete
+        }        
       ],
     });    
   });

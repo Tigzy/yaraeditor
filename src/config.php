@@ -9,7 +9,7 @@
 */
  
 $config = array(
-    "version" => "0.6",
+    "version" => "0.7",
     "db" => array(
         "usercake" => array(
             "dbname" => "yed",

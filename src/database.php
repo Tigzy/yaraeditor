@@ -254,6 +254,7 @@ class YEdDatabase
 		$table_rule->setSelect(array(
 				'id' => 'id',
 				'file_id' => 'file_id',
+				'author' => 'author_id',
 				'name' => 'name',
 				'cond' => 'cond',
 				'is_private' => 'is_private',
@@ -261,12 +262,13 @@ class YEdDatabase
 				'tags' => 'tags',
 				'modified' => 'last_modified',
 				'created' => 'created',
-				'status' => 'status'
+				'status' => 'status',
+				'comment' => 'comment',
+				'threat' => 'threat',
+				'public' => 'is_public'
 		));
 		$table_rule->setRawSelect(array(
-				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name",
-				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__threat')" => "threat",
-				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__author')" => "author_id"
+				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name"
 		));
 		$table_rule->addGroupBy('id');
 		$table_rule->addOrderBy(new QueryOrderBy('modified', 'DESC', True));		
@@ -304,6 +306,7 @@ class YEdDatabase
 		$table_rule->setSelect(array(
 				'id' => 'id',
 				'file_id' => 'file_id',
+				'author' => 'author_id',
 				'name' => 'name',
 				'cond' => 'cond',
 				'is_private' => 'is_private',
@@ -311,12 +314,13 @@ class YEdDatabase
 				'tags' => 'tags',
 				'modified' => 'last_modified',
 				'created' => 'created',
-				'status' => 'status'
+				'status' => 'status',
+				'comment' => 'comment',
+				'threat' => 'threat',
+				'public' => 'is_public'
 		));
 		$table_rule->setRawSelect(array(
-				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name",
-				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__threat')" => "threat",
-				"(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = '__author')" => "author_id"
+				"(SELECT f.name FROM virtual_file f WHERE f.id = rule.file_id)" => "file_name"
 		));
 		$table_rule->addGroupBy('id');
 		$table_rule->addOrderBy(new QueryOrderBy('name', 'ASC', True));		
@@ -328,8 +332,8 @@ class YEdDatabase
 			$filter_statement = new QueryWhere();
 			$filter_statement->addChildren(new QueryWhere('name', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str', 'OR'));			
 			$filter_statement->addChildren(new QueryWhere('FIND_IN_SET("' . $this->escape_string($params->quick) . '", tags)', '', '', '', 'OR'));	
-			$filter_statement->addChildren(new QueryWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__threat") LIKE "%' . $this->escape_string($params->quick) . '%"', '', '', '', 'OR'));
-			$filter_statement->addChildren(new QueryWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__comment") LIKE "%' . $this->escape_string($params->quick) . '%"', '', '', '', 'OR'));
+			$filter_statement->addChildren(new QueryWhere('threat', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str', 'OR'));		
+			$filter_statement->addChildren(new QueryWhere('comment', '%' . $this->escape_string($params->quick) . '%', 'LIKE', 'str', 'OR'));				
 			$filter_statement->addChildren(new QueryWhere('(meta.name LIKE "%' . $this->escape_string($params->quick) . '%" OR meta.value LIKE "%' . $this->escape_string($params->quick) . '%")', '', '', '', 'OR'));			
 			$filter_statement->addChildren(new QueryWhere('(string.name LIKE "%' . $this->escape_string($params->quick) . '%" OR string.value LIKE "%' . $this->escape_string($params->quick) . '%")', '', '', '', 'OR'));
 			
@@ -373,13 +377,13 @@ class YEdDatabase
 				$table_rule->addRawWhere('FIND_IN_SET("' . $this->escape_string($params->tags) . '", tags)');
 			}
 			if ( isset($params->author) && $params->author != -1 ) {
-				$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__author") = ' . $this->escape_string($params->author));
+				$table_rule->addWhere(new QueryWhere('author', $this->escape_string($params->author), '=', 'int'));
 			}	
 			if ( isset($params->threat) && $params->threat != -1 ) {
-				$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__threat") LIKE "%' . $this->escape_string($params->threat) . '%"');
+				$table_rule->addWhere(new QueryWhere('threat', '%' . $this->escape_string($params->threat) . '%', 'LIKE', 'str'));
 			}
 			if ( isset($params->comment) && $params->comment != -1 ) {
-				$table_rule->addRawWhere('(SELECT m.value FROM rule_metas m WHERE m.rule_id = rule.id AND m.name = "__comment") LIKE "%' . $this->escape_string($params->comment) . '%"');
+				$table_rule->addWhere(new QueryWhere('comment', '%' . $this->escape_string($params->comment) . '%', 'LIKE', 'str'));
 			}
 			if ( isset($params->metas) && $params->metas != -1 ) {
 				$table_metas = new QueryTable('meta');	
@@ -419,15 +423,18 @@ class YEdDatabase
 	
 	public function GetRule($rule_id) 
 	{
-		$stmt = $this->mysqli->prepare("SELECT r.id, r.file_id, r.name, r.cond, r.is_private, r.is_global, r.tags, r.modified, r.created 
+		$stmt = $this->mysqli->prepare("SELECT r.id, r.file_id, r.author, r.name, r.cond, r.is_private, r.is_global, r.tags, r.modified, r.created, r.status, r.comment, r.threat, r.public  
 				FROM rule r 
 				WHERE r.id = ?");
 		$stmt->bind_param("i", $rule_id);
 		$stmt->execute();
-		$stmt->bind_result($id, $file_id, $name, $condition, $is_private, $is_global, $tags, $modified, $created);
+		$stmt->bind_result($id, $file_id, $author, $name, $condition, $is_private, $is_global, $tags, $modified, $created, $status, $comment, $threat, $public);
 		$results = array();
 		if ($stmt->fetch()) {
-			$results = array('id' => $id, 'file_id' => $file_id, 'name' => $name, 'cond' => $condition, 'is_private' => $is_private, 'is_global' => $is_global, 'tags' => $tags, 'last_modified' => $modified, 'created' => $created);
+			$results = array('id' => $id, 'file_id' => $file_id, 'author_id' => $author, 'name' => $name, 'cond' => $condition, 
+					'is_private' => $is_private, 'is_global' => $is_global, 'tags' => $tags, 'last_modified' => $modified, 'created' => $created,
+					'status' => $status, 'comment' => $comment, 'threat' => $threat, 'is_public' => $public
+			);
 			$results["tags"] = array_filter(explode(",", $results["tags"]));
 		}
 		$stmt->close();		
@@ -458,8 +465,10 @@ class YEdDatabase
 	public function CreateRule($rule_content) 
 	{
 		$tags = implode(",", $rule_content->tags);
-		$stmt = $this->mysqli->prepare("INSERT INTO rule (file_id, name, cond, is_private, is_global, tags, created, modified) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())");
-		$stmt->bind_param("issiis", $rule_content->file_id, $rule_content->name, $rule_content->condition, $rule_content->is_private, $rule_content->is_global, $tags);
+		$stmt = $this->mysqli->prepare("INSERT INTO rule (file_id, author, name, cond, is_private, is_global, tags, created, modified, comment, threat, public) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ? , ? , ?)");
+		$stmt->bind_param("iissiisssi", 
+				$rule_content->file_id, $rule_content->author_id, $rule_content->name, $rule_content->condition, 
+				$rule_content->is_private, $rule_content->is_global, $tags, $rule_content->comment, $rule_content->threat, $rule_content->is_public);
 		$stmt->execute();
 		$id = $this->mysqli->insert_id;
 		$stmt->close();		
@@ -468,8 +477,8 @@ class YEdDatabase
 	
 	public function CopyRule($rule_id) 
 	{
-		$stmt = $this->mysqli->prepare("INSERT INTO rule (file_id, name, cond, is_private, is_global, tags, created, modified) 
-				SELECT file_id, name, cond, is_private, is_global, tags, NOW(), NOW() FROM rule WHERE id=?");
+		$stmt = $this->mysqli->prepare("INSERT INTO rule (file_id, author, name, cond, is_private, is_global, tags, created, modified, comment, threat, public) 
+				SELECT file_id, name, author, cond, is_private, is_global, tags, NOW(), NOW(), comment, threat, public FROM rule WHERE id=?");
 		$stmt->bind_param("i", $rule_id);
 		$stmt->execute();
 		$id = $this->mysqli->insert_id;
@@ -480,8 +489,11 @@ class YEdDatabase
 	public function UpdateRule($rule_id, $rule_content) 
 	{
 		$tags = implode(",", $rule_content->tags);
-		$stmt = $this->mysqli->prepare("UPDATE rule SET file_id=?, name=?, cond=?, is_private=?, is_global=?, tags=?, modified=NOW() WHERE id=?");
-		$stmt->bind_param("issiisi", $rule_content->file_id, $rule_content->name, $rule_content->condition, $rule_content->is_private, $rule_content->is_global, $tags, $rule_id);
+		$stmt = $this->mysqli->prepare("UPDATE rule SET file_id=?, author=?, name=?, cond=?, is_private=?, is_global=?, tags=?, modified=NOW(), comment=?, threat=?, public=? WHERE id=?");
+		$stmt->bind_param("iissiisssii", 
+				$rule_content->file_id, $rule_content->author_id, $rule_content->name, $rule_content->condition, 
+				$rule_content->is_private, $rule_content->is_global, $tags, $rule_content->comment, $rule_content->threat, $rule_content->is_public,
+				$rule_id);
 		$stmt->execute();
 		$success = $this->mysqli->affected_rows > 0;
 		$stmt->close();
@@ -753,7 +765,7 @@ class YEdDatabase
 	
 	public function GetSubmissionsPerUser() 
 	{
-		$stmt = $this->mysqli->prepare("SELECT value as uploader, COUNT(*) FROM `rule_metas` WHERE name = '__author' and value <> '' GROUP BY value");
+		$stmt = $this->mysqli->prepare("SELECT author as uploader, COUNT(*) FROM `rule` WHERE author <> '' GROUP BY uploader");
 		$stmt->execute();
 		$stmt->bind_result($uploader, $count);
 		$results = array();
@@ -800,10 +812,9 @@ class YEdDatabase
 	
 	public function SearchThreat($request)
 	{
-		$meta_name = '__threat';
 		$meta_value = $request . '%';
-		$stmt = $this->mysqli->prepare("SELECT value FROM rule_metas WHERE name = ? AND value LIKE ? GROUP BY value");
-		$stmt->bind_param("ss", $meta_name, $meta_value);
+		$stmt = $this->mysqli->prepare("SELECT threat FROM rule WHERE threat LIKE ? GROUP BY threat");
+		$stmt->bind_param("s", $meta_value);
 		$stmt->execute();
 		$stmt->bind_result($value);
 		$results = array();
@@ -1035,6 +1046,76 @@ class YEdDatabase
 	
 	//===============================================
 	
+	public function GetComments($rule_id) 
+	{		
+		$stmt = $this->mysqli->prepare("SELECT id, IF(parent < 0, NULL, parent) as parent, created, modified, content, pings, author, IF((TIME_TO_SEC(NOW()) - TIME_TO_SEC(created))/60 > 60, 0, 1) as is_new, upvote_count, rule_id  
+				FROM rule_comments
+				WHERE rule_id = ?"
+		);
+		$stmt->bind_param("i", $rule_id);
+		$stmt->execute();
+		$stmt->bind_result($id, $parent, $created, $modified, $content, $pings, $author, $is_new, $upvote_count, $r_id );
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array( 
+					'id' => $id, 'parent' => $parent, 'created' => $created, 'modified' => $modified, 'content' => $content, 
+					'pings' => $pings, 'author' => $author, 'is_new' => $is_new, 'upvote_count' => $upvote_count, 'rule_id' => $r_id 					
+			);
+		}
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function GetComment($comment_id) 
+	{		
+		$stmt = $this->mysqli->prepare("SELECT id, IF(parent < 0, NULL, parent) as parent, created, modified, content, pings, author, IF((TIME_TO_SEC(NOW()) - TIME_TO_SEC(created))/60 > 60, 0, 1) as is_new, upvote_count, rule_id  
+				FROM rule_comments
+				WHERE id = ?"
+		);
+		$stmt->bind_param("i", $comment_id);
+		$stmt->execute();
+		$stmt->bind_result($id, $parent, $created, $modified, $content, $pings, $author, $is_new, $upvote_count, $r_id );
+		$stmt->fetch();
+		$results = array( 
+				'id' => $id, 'parent' => $parent, 'created' => $created, 'modified' => $modified, 'content' => $content, 
+				'pings' => $pings, 'author' => $author, 'is_new' => $is_new, 'upvote_count' => $upvote_count, 'rule_id' => $r_id 					
+		);
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function AddComment($comment_id, $parent, $content, $pings, $author) 
+	{
+		$stmt = $this->mysqli->prepare("INSERT INTO rule_comments (parent, created, modified, content, pings, author, upvote_count, rule_id) VALUES (?, NOW(), NOW(), ?, ?, ?, 0, ?)");
+		$stmt->bind_param("issii", $parent, $content, $pings, $author, $comment_id);
+		$stmt->execute();
+		$id = $this->mysqli->insert_id;
+		$stmt->close();		
+		return $id;
+	}
+	
+	public function UpdateComment($comment_id, $content, $pings) 
+	{		
+		$stmt = $this->mysqli->prepare("UPDATE rule_comments SET modified=NOW(), content=?, pings=? WHERE id=?");
+		$stmt->bind_param("ssi", $content, $pings, $comment_id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	public function DeleteComment($comment_id) 
+	{		
+		$stmt = $this->mysqli->prepare("DELETE FROM rule_comments WHERE id=?");
+		$stmt->bind_param("i", $comment_id);
+		$stmt->execute();
+		$success = $this->mysqli->affected_rows > 0;
+		$stmt->close();
+		return $success;
+	}
+	
+	//===============================================
+	
 	public function Create()
 	{
 		$success = true;
@@ -1100,6 +1181,7 @@ class YEdDatabase
 		CREATE TABLE `rule` (
 		  `id` int(11) NOT NULL,
 		  `file_id` int(11) NOT NULL,
+		  `author` int(11) NOT NULL,
 		  `name` text NOT NULL,
 		  `cond` text NOT NULL,
 		  `is_private` int(11) NOT NULL DEFAULT '0',
@@ -1107,7 +1189,10 @@ class YEdDatabase
 		  `tags` text NOT NULL,
 		  `created` datetime NOT NULL,
 		  `modified` datetime NOT NULL,
-  		  `status` varchar(10) NOT NULL DEFAULT 'draft'
+  		  `status` varchar(10) NOT NULL DEFAULT 'draft',
+		  `comment` longtext NOT NULL,
+		  `threat` text NOT NULL,
+		  `public` int(11) NOT NULL DEFAULT '0'
 		) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 		";
 		
@@ -1551,6 +1636,66 @@ class YEdDatabase
 		else
 		{
 			echo "<p>Error constructing testset table increment.</p>";
+			$success = false;
+		}
+		
+		//=========================================		
+		
+		$rule_comments_sql = "
+		CREATE TABLE `rule_comments` (
+		  `id` int(11) NOT NULL,
+		  `parent` int(11) NOT NULL DEFAULT '-1',
+		  `created` datetime NOT NULL,
+		  `modified` datetime NOT NULL,
+		  `content` longtext NOT NULL,
+		  `pings` text NOT NULL,
+		  `author` int(11) NOT NULL,
+		  `upvote_count` int(11) NOT NULL DEFAULT '0',
+		  `rule_id` int(11) NOT NULL
+		) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+		";
+		
+		$stmt = $this->mysqli->prepare($rule_comments_sql);
+		if($stmt->execute())
+		{
+			echo "<p>rule_comments table created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing rule_comments table.</p>";
+			$success = false;
+		}
+		
+		$rule_comments_sql = "
+		ALTER TABLE `rule_comments`
+		  ADD PRIMARY KEY (`id`),
+		  ADD KEY `rule_id` (`rule_id`);
+		";	
+		
+		$stmt = $this->mysqli->prepare($rule_comments_sql);
+		if($stmt->execute())
+		{
+			echo "<p>rule_comments table index created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing rule_comments table index.</p>";
+			$success = false;
+		}
+		
+		$rule_comments_sql = "
+		ALTER TABLE `rule_comments`
+  		MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT;
+		";	
+		
+		$stmt = $this->mysqli->prepare($rule_comments_sql);
+		if($stmt->execute())
+		{
+			echo "<p>rule_comments table increment created.....</p>";
+		}
+		else
+		{
+			echo "<p>Error constructing rule_comments table increment.</p>";
 			$success = false;
 		}
 		

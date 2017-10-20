@@ -350,6 +350,31 @@ desired effect
 	  );	
   }
 
+  function rules_delete()
+  {
+  	  var selected = $('#rules').DataTable().rows( { selected: true } );
+  	  var selected_ids = [];
+  	  selected.every( function ( index, tableLoop, rowLoop ) {
+  		    var data = this.data();
+  		    selected_ids.push(data.id);
+  	  } );
+  	
+  	  Pace.start();
+  	  delete_rules(selected_ids, 
+  		function(data, code) {		
+  		    $('#confirm-action').modal('hide');	
+  			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rules removed.</div>');
+  			
+  			Pace.stop();
+  			refresh_rules();
+  		},
+  		function(message, error) {
+  			$('#confirm-action').modal('hide');
+  			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to remove rules</div>');
+  		}		
+  	  );	
+  }
+
   function rule_copy(id)
   {
 	  var rule_name = $('#confirm-action').find('#new-file-name').val();
@@ -468,6 +493,21 @@ desired effect
 	  $('#confirm-action').modal('show');
   }
 
+  function confirm_rules_delete()
+  {
+  	  var count = $('#rules').DataTable().rows( { selected: true } ).count();
+  	  if (count == 0) {
+  	  	  return;
+  	  }
+
+  	  $('#confirm-action').find('#confirm-file-name').hide();
+  	  $('#confirm-action').find('#new-file-name').val("");	
+  	  $('#confirm-action').find('.modal-header').html("Rules removal");
+  	  $('#confirm-action').find('#modal-message').html("This will remove selected rules, do you want to proceed?");	 
+  	  $('#confirm-action').find('.btn-ok').attr('OnClick', 'rules_delete()');
+  	  $('#confirm-action').modal('show');
+  }
+
   function refresh_rules() 
   {
       $('#rules').DataTable().ajax.reload();
@@ -494,6 +534,7 @@ desired effect
 	table = $('#rules').DataTable({
       dom: "Bfrtip",
       paging: true,
+      pageLength: 25,
       lengthChange: true,
       searching: true,
       ordering: true,
@@ -587,6 +628,11 @@ desired effect
         	text: "<i class='fa fa-plus'></i>",
             titleAttr: 'Add Rule',
             action: rule_add
+        },
+        {
+        	  text: "<i class='fa fa-trash'></i>",
+            titleAttr: 'Delete',
+            action: confirm_rules_delete
         }
       ],
     });    
