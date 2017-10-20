@@ -1685,7 +1685,7 @@ class YEdDatabase
 		
 		$rule_comments_sql = "
 		ALTER TABLE `rule_comments`
-  		MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT;
+  		MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 		";	
 		
 		$stmt = $this->mysqli->prepare($rule_comments_sql);
