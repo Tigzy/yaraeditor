@@ -446,6 +446,10 @@ def p_rule_section(p):
              | strings_section
              | condition_section'''
 
+def p_empty(p):
+  'empty : '
+  pass
+
 def p_meta_section(p):
   'meta_section : SECTIONMETA meta_kvs'
   parserInterpreter.printDebugMessage('...matched meta section')
@@ -460,7 +464,8 @@ def p_condition_section(p):
 
 def p_meta_kvs(p):
   '''meta_kvs : meta_kvs meta_kv
-              | meta_kv'''
+              | meta_kv
+              | empty'''
   parserInterpreter.printDebugMessage('...matched meta kvs')
 
 def p_meta_kv(p):
@@ -478,7 +483,8 @@ def p_meta_kv(p):
 
 def p_strings_kvs(p):
   '''strings_kvs : strings_kvs strings_kv
-                 | strings_kv'''
+                 | strings_kv
+                 | empty'''
   parserInterpreter.printDebugMessage('...matched strings kvs')
 
 def p_strings_kv(p):
