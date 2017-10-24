@@ -190,6 +190,26 @@ class Rest_Api extends Rest_Rest {
 		$this->response(json_encode("{}"),200);
 	}
 	
+	public function importrule()
+	{
+		$this->validateKey();
+		if($this->get_request_method() != "POST"){ $this->response('',406); return false; }		
+		
+		$rule_id = $this->getParameter("id");
+		if (is_null($rule_id)) {$this->response('missing id parameter',400); return false; }	
+		$rules_content = $this->getParameter("content");
+		if (!$rules_content) {$this->response('missing content parameter',400); return false; }		
+		
+		// Get results
+		$core 		= $this->getCore();	
+		$results 	= $core->ImportRule($rule_id, $rules_content);
+		if (!$results) {
+			$this->response("unable to import rules",403);
+			return false;
+		}
+		$this->response(json_encode("{}"),200);
+	}
+	
 	public function getrules() 
 	{
 		$this->validateKey();
@@ -568,6 +588,15 @@ class Rest_Api extends Rest_Rest {
 		
 		$core 			= $this->getCore();
 		$data 			= $core->GetSubmissionsPerUser();	
+		echo json_encode($data);
+	}
+	
+	public function getlastcomments() {	
+		$this->validateKey();
+		if($this->get_request_method() != "GET"){ $this->response('',406); return false; }		
+		
+		$core 			= $this->getCore();
+		$data 			= $core->GetLastComments();	
 		echo json_encode($data);
 	}
 	

@@ -202,6 +202,11 @@ desired effect
 						</div>
 						<?php if ($rule_id != "") { ?>	
 						<div class="btn-group pull-right" style="padding-right: 10px">
+							<button id="import-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Overwrite from file' OnClick="show_import_rule(<?php echo $rule_id ?>)"><span class="fa fa-upload"></span></button>
+						</div>
+						<?php } ?>	
+						<?php if ($rule_id != "") { ?>	
+						<div class="btn-group pull-right" style="padding-right: 10px">
 							<button id="save-button" class="btn btn-primary jsbtn" data-toggle='tooltip' title='Open rule' OnClick="rule_view(<?php echo $rule_id ?>)"><span class="fa fa-eye"></span></button>
 						</div>
 						<?php } ?>					
@@ -457,6 +462,32 @@ desired effect
 		        </div>
 		    </div>
 		  </div>
+		  
+		  <div class="modal fade" id="import-file" tabindex="-1" role="dialog" aria-labelledby="myModalLabel2" aria-hidden="true">
+		    <div class="modal-dialog">
+		        <div class="modal-content">
+		            <div class="modal-header">
+				    </div>
+		            <div class="modal-body">
+				      <form id="form-add-test">
+				        <fieldset>
+				          <!-- Text input-->
+				          <div id="form-text" class="form-group">
+				            <label class="col-sm-1 control-label" id="import-label"></label>
+				            <div class="col-sm-11">
+				              <textarea id="import-string" style="width: 100%; height: 400px"></textarea>
+				            </div>
+				          </div>			          			          			
+				        </fieldset>			        
+				      </form>				      
+		            </div>
+		            <div class="modal-footer">
+		                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+		                <a class="btn btn-danger btn-ok" OnClick="">Import</a>
+		            </div>
+		        </div>
+		    </div>
+		  </div>
 			
 		</section>
 		</form>
@@ -666,6 +697,37 @@ function testset_update(id)
 	}		
   );
 }
+
+function rule_import(id)
+{
+	  var string_value = $('#import-file').find('textarea#import-string').val();
+	  
+	  Pace.start();
+	  import_rule( id, string_value,
+		function(data, code) {		
+		  	$('#import-file').modal('hide');			  	
+			$("#alert").html('<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-info-sign"></span> Rule imported with success.</div>');
+			
+			Pace.stop();
+			loadRule(id);
+		},
+		function(message, error) {
+			$('#import-file').modal('hide');
+			$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to import rule</div>');
+		}		
+	  );
+}
+
+function show_import_rule(id)
+{
+  $('#import-file').find('.modal-header').html("Import Rule");
+  $('#import-file').find('label#import-label').html("Content");
+  $('#import-file').find('textarea#import-string').val("");  
+  $('#import-file').find('textarea#import-string').attr('placeholder', 'put your rule content here');
+  $('#import-file').find('.btn-ok').attr('OnClick', 'rule_import(' + id + ')');
+  $('#import-file').modal('show');	
+  $('#import-file').find('textarea#import-string').focus();  
+}
 	  
 function confirm_testset_delete(id)
 {
@@ -695,7 +757,6 @@ function confirm_testsets_delete(id)
 function refresh_tests() 
 {
   $('#tests').DataTable().ajax.reload();
-  $("#tests-badge").html($('#tests').DataTable().row().count());
 }
 
 function show_add_testset()
@@ -1071,11 +1132,12 @@ $(function () {
       searching: true,
       ordering: true,
       info: true,
-      autoWidth: true,
+      autoWidth: false,
       processing: false,
       serverSide: false,
       responsive: true,
       fnInitComplete: function (oSettings, json) {
+    	  $("#tests-badge").html($('#tests').DataTable().row().count());
 		  Pace.stop();
       },
       ajax: {

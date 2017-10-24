@@ -338,13 +338,13 @@ class YEdDatabase
 			$filter_statement->addChildren(new QueryWhere('(string.name LIKE "%' . $this->escape_string($params->quick) . '%" OR string.value LIKE "%' . $this->escape_string($params->quick) . '%")', '', '', '', 'OR'));
 			
 			$table_metas = new QueryTable('meta');	
-			$table_metas->setWhereCondition('OR');
+			$table_metas->setWhereCondition('OR');			
 			$table_metas->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
 			$table_metas->setJoinType('LEFT');
 			$queryobj->addJoinTable($table_metas);
 						
 			$table_strings = new QueryTable('string');	
-			$table_strings->setWhereCondition('OR');
+			$table_strings->setWhereCondition('OR');			
 			$table_strings->addJoinWhere(new QueryWhere('rule_id', 'rule.id', '=', 'field'));
 			$table_strings->setJoinType('LEFT');
 			$queryobj->addJoinTable($table_strings);
@@ -727,7 +727,7 @@ class YEdDatabase
 	
 	public function GetHistory($limit = -1) 
 	{
-		$query = "SELECT id,user,date,action,item_id,item_type,item_name,item_value,item_old_value FROM history";	
+		$query = "SELECT id,user,date,action,item_id,item_type,item_name,item_value,item_old_value FROM history ORDER BY date DESC";	
 		if ( $limit != -1 ) {
 			$query = $query . " LIMIT " . $this->escape_string($limit);
 		}
@@ -1053,6 +1053,27 @@ class YEdDatabase
 				WHERE rule_id = ?"
 		);
 		$stmt->bind_param("i", $rule_id);
+		$stmt->execute();
+		$stmt->bind_result($id, $parent, $created, $modified, $content, $pings, $author, $is_new, $upvote_count, $r_id );
+		$results = array();
+		while ($stmt->fetch()) {
+			$results[] = array( 
+					'id' => $id, 'parent' => $parent, 'created' => $created, 'modified' => $modified, 'content' => $content, 
+					'pings' => $pings, 'author' => $author, 'is_new' => $is_new, 'upvote_count' => $upvote_count, 'rule_id' => $r_id 					
+			);
+		}
+		$stmt->close();		
+		return $results;
+	}
+	
+	public function GetLastComments($limit = 10) 
+	{		
+		$stmt = $this->mysqli->prepare("SELECT id, IF(parent < 0, NULL, parent) as parent, created, modified, content, pings, author, IF((TIME_TO_SEC(NOW()) - TIME_TO_SEC(created))/60 > 60, 0, 1) as is_new, upvote_count, rule_id  
+				FROM rule_comments
+				ORDER BY created DESC
+				LIMIT ?"
+		);
+		$stmt->bind_param("i", $limit);
 		$stmt->execute();
 		$stmt->bind_result($id, $parent, $created, $modified, $content, $pings, $author, $is_new, $upvote_count, $r_id );
 		$results = array();

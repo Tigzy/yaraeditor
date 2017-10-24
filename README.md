@@ -4,6 +4,17 @@ yaraeditor-web
 Malware Repository Framework
 Official page: http://www.adlice.com/download/yaraeditorweb/
 
+## Version 0.8
+Fixed tables autowidth  
+Fixed badges values  
+Fixed history not showing the latest events  
+Fixed import condition parsing  
+Fixed preview not showing imports  
+Fixed syntax check not using imports  
+Added rule overwrite from file import  
+Added last comments section in stats page  
+Refactored stats page layout  
+
 ## Version 0.7
 Added Bulk actions  
 Added User commenting system  

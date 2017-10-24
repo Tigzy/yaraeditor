@@ -478,7 +478,7 @@ desired effect
       searching: true,
       ordering: true,
       info: true,
-      autoWidth: true,
+      autoWidth: false,
       processing: false,
       serverSide: false,
       responsive: true,

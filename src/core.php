@@ -179,7 +179,7 @@ class YEdCore
 		// Generate file
 		$file_path	= tempnam(sys_get_temp_dir(), 'yed');
 		$file_name 	= basename($file_path);
-		$content 	= $this->GetRuleExport($rule_id, $file_name);
+		$content 	= $this->GetRuleExport($rule_id, $file_name, True);
 		$file 		= fopen($file_path, 'w');
 		if (!$file) { return false; }
 		
@@ -196,6 +196,21 @@ class YEdCore
         return True;
 	}
 	
+	public function GetFileImportsExport($file_id)
+	{
+		$content = "";
+		
+		// Imports
+		$file_data = $this->GetFile($file_id);
+		foreach($file_data["imports"] as $import)
+		{
+			$content .= "import \"" . $import . "\"\n";
+		}
+		if (!empty($file_data["imports"])) $content .= "\n"; 
+		
+		return $content;		
+	}
+	
 	public function GetFileExport($file_id, &$file_name)
 	{
 		$content = "";
@@ -206,7 +221,7 @@ class YEdCore
 		// Imports
 		foreach($file_data["imports"] as $import)
 		{
-			$content .= "import " . $import . "\n";
+			$content .= "import \"" . $import . "\"\n";
 		}
 		if (!empty($file_data["imports"])) $content .= "\n"; 
 		
@@ -215,17 +230,22 @@ class YEdCore
 		foreach($rules as $rule)
 		{
 			$dummy 	  = "";
-			$content .= $this->GetRuleExport($rule["id"], $dummy) . "\n";
+			$content .= $this->GetRuleExport($rule["id"], $dummy, False) . "\n";
 		}
 		
 		return $content;
 	}
 	
-	public function GetRuleExport($rule_id, &$file_name)
+	public function GetRuleExport($rule_id, &$file_name, $is_single = False)
 	{
 		$content 	= "";		
 		$rule 		= $this->GetRule($rule_id);	
 		$file_name  = $rule["name"] . ".yar";
+		
+		// imports, only if we export 1 rule only
+		if ($is_single) {
+			$content = $content . $this->GetFileImportsExport($rule["file_id"]);
+		}
 		
 		// comment
 		if (!empty($rule["comment"])) {
@@ -323,6 +343,54 @@ class YEdCore
 			
 		// Update file
 		$this->UpdateFile($file_id, $file["name"], $imports_needed);
+		
+        return $success;
+	}
+	
+	public function ImportRule($rule_id, $content)
+	{
+		global $user;
+		if (!$this->CheckPermissions('edit', $rule_id))
+			return False;
+		
+		// Get rule
+		$rule = $this->GetRule($rule_id);
+		// Get file
+		$file = $this->GetFile($rule["file_id"]);
+		
+		// Parse content with module		
+		$data = array('content' => &$content);
+		if (!$this->modules->Notify("OnYaraParseString", $data) || !isset($data['rules'])) {
+			return False;
+		}
+		if (isset($data['rules']->valid) && !$data['rules']->valid) {
+			return False;
+		}
+			
+		// Add first rule only
+		$success = True;
+		$imports_needed = $file["imports"];
+		foreach ($data['rules'] as $imported_rule)
+		{
+			$rule_obj 				= (object) $imported_rule;
+			$rule_obj->file_id 		= $rule["file_id"];
+			$rule_obj->author 		= $user->DisplayName();
+			$rule_obj->author_id 	= $user->Id();
+			$rule_obj->is_public    = False;
+			
+			// Merge imports
+			$rule_imports 	= array_map( function($item) { return trim($item,'"'); }, $rule_obj->imports);			
+			$imports_needed = array_unique(array_merge($imports_needed, $rule_imports));
+			
+			if (!$this->UpdateRule($rule_id, $rule_obj)) {
+				$success = False;
+			}
+			
+			break;	// Stop at first rule
+		}
+			
+		// Update file
+		$this->UpdateFile($rule["file_id"], $file["name"], $imports_needed);
 		
         return $success;
 	}
@@ -1037,7 +1105,7 @@ class YEdCore
 		    $uploader_data["name"]   = $user_obj->Name();
 		}	
 		return $data;
-	}
+	}	
 	
 	public function GetTags()	{
 		return $this->database->GetTags();
@@ -1168,6 +1236,31 @@ class YEdCore
 		return $comment;
 	}
 	
+	public function GetLastComments($limit = 10)	
+	{
+		$comments = $this->database->GetLastComments();
+		$users 	  = $this->GetUsers();
+		
+		global $user;		
+		foreach($comments as &$item)
+		{
+			$item["fullname"] = "";
+			foreach($users as $user2)
+			{
+				if ($user2["id"] == $item["author"]) {
+					$item["fullname"] 			 = $user2["display_name"];	
+					$item["profile_picture_url"] = empty($user2["avatar"]) ? "" : ("data:image/png;base64," . $user2["avatar"]);
+				}
+			}
+			$item["created_by_current_user"] = ($user->Id() == $item["author"]) ? True : False;
+			$item["user_has_upvoted"] 	     = False; //TODO
+			
+			$rule = $this->GetRule($item["rule_id"]);
+			$item["rule_name"] = $rule["name"];
+		}	
+		return $comments;
+	}
+	
 	public function GetComments($rule_id)
 	{
 		if (!$this->CheckPermissions('read'))
@@ -1209,7 +1302,7 @@ class YEdCore
 	
 	public function UpdateComment($comment_id, $pings, $comment)
 	{
-		if (!$this->CheckPermissions('edit_comment'))
+		if (!$this->CheckPermissions('edit_comment', $comment_id))
 			return NULL;
 		
 		$old_value = $this->GetComment($comment_id);
@@ -1223,7 +1316,7 @@ class YEdCore
 	
 	public function DeleteComment($comment_id)
 	{
-		if (!$this->CheckPermissions('edit_comment'))
+		if (!$this->CheckPermissions('edit_comment', $comment_id))
 			return NULL;
 		
 		$old_value = $this->GetComment($comment_id);
@@ -1289,7 +1382,7 @@ class YEdCore
 			return NULL;
 		
 		$rule_name 		= "";
-		$rule_export 	= $this->GetRuleExport($rule_id, $rule_name);
+		$rule_export 	= $this->GetRuleExport($rule_id, $rule_name, True);
 		
 		$data = array('rule_export' => &$rule_export);
 		if (!$this->modules->Notify("OnYaraCheckSyntax", $data) || !isset($data['rule_check'])) {
@@ -1311,7 +1404,7 @@ class YEdCore
 		
 		// Get rule content
 		$rule_name 		= "";
-		$rule_export 	= $this->GetRuleExport($set["rule_id"], $rule_name);				
+		$rule_export 	= $this->GetRuleExport($set["rule_id"], $rule_name, True);				
 		
 		$data = array('rule_export' => &$rule_export, 'test_type' => $test["type"], 'test_data' => $test["content"], 'storage_path' => $GLOBALS["config"]["tests"]["storage"]);
 		if (!$this->modules->Notify("OnYaraTest", $data) || !isset($data['rule_test'])) {

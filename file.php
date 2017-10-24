@@ -121,7 +121,7 @@ desired effect
 				<button id="save-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Save file' OnClick="file_update(<?php echo $file_id ?>)"><span class="fa fa-save"></span></button>
 			</div>	
 			<div class="btn-group pull-right" style="padding-right: 10px">
-				<button id="export-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Import file' OnClick="show_import_file()"><span class="fa fa-upload"></span></button>
+				<button id="import-button" class="btn btn-warning jsbtn" data-toggle='tooltip' title='Import file' OnClick="show_import_file()"><span class="fa fa-upload"></span></button>
 			</div>
             <div class="btn-group pull-right" style="padding-right: 10px">
 				<button id="export-button" class="btn btn-primary jsbtn" data-toggle='tooltip' title='Export file' OnClick="file_export(<?php echo $file_id ?>)"><span class="fa fa-download"></span></button>
@@ -539,7 +539,7 @@ desired effect
       searching: true,
       ordering: true,
       info: true,
-      autoWidth: true,
+      autoWidth: false,
       processing: false,
       serverSide: false,
       responsive: true,

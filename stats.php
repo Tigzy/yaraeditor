@@ -106,8 +106,8 @@ desired effect
     	<!-- Line Chart row -->
 		<div class="row">
 		
-			<!-- Left col -->
 			<section class="col-lg-4 connectedSortable">
+			  
 			  <!-- Widget: user widget style 1 -->
           	  <div class="box box-widget widget-user-2">
 				<!-- Add the bg color to the header using any of the bg-* classes -->
@@ -127,11 +127,8 @@ desired effect
 	              </ul>
 	            </div>
 	          </div>
-			</section>	
-			
-			<!-- Left col -->
-			<section class="col-lg-4 connectedSortable">
-				<!-- USERS LIST -->
+	          
+	          <!-- USERS LIST -->
               <div class="box box-danger">
                 <div class="box-header with-border">
                   <h3 class="box-title">Best Uploaders</h3>
@@ -148,11 +145,8 @@ desired effect
                 <!-- /.box-body -->
               </div>
               <!--/.box -->
-			</section>
-			
-			<!-- Right col -->
-			<section class="col-lg-4 connectedSortable">
-			  	<!-- TAGS CHART -->
+              
+              <!-- TAGS CHART -->
 				<div class="box box-primary">
 					<div class="box-header with-border">
 						<h3 class="box-title">Tags</h3>
@@ -169,10 +163,22 @@ desired effect
 					<!-- /.box-body -->
 				</div>
 				<!-- /.box -->
-			</section>		
+				
+				<!-- Horizontal Form -->
+          		<div class="box box-info">
+		          <div class="box-header with-border">
+		            <h3 class="box-title">Last Comments</h3>
+		          </div>             
+		          <div id="last-comments" class="box-body">		            
+		          </div>
+		          <!-- /.box-body -->          
+	        	</div>	 
+	          
+			</section>	
+		
+		
+			<section class="col-lg-7 connectedSortable">
 			
-			<!-- Left col -->
-			<section class="col-lg-12 connectedSortable">
 				<!-- Horizontal Form -->
           		<div class="box box-info">
 		          <div class="box-header with-border">
@@ -196,11 +202,12 @@ desired effect
 		            </table>
 		          </div>
 		          <!-- /.box-body -->          
-	        	</div>			
-			</section>	
-		
-			<!-- Left col -->
-			<section class="col-lg-12 connectedSortable">
+	        	</div>	 
+	        	
+			</section>
+			
+			<section class="col-lg-12 connectedSortable">	
+			
 				<!-- AREA CHART -->
 				<div class="box box-primary">
 					<div class="box-header with-border">
@@ -219,8 +226,9 @@ desired effect
 					</div>
 					<!-- /.box-body -->
 				</div>
-				<!-- /.box -->
-			</section>					
+				<!-- /.box -->	    	
+			
+			</section>	
 			
 		</div>
 		<!-- /.row (Line Chart row) -->	
@@ -279,9 +287,39 @@ function initStats()
 		refreshTimeLine(),
 		refreshUploaders(),
 		refreshTags(),
-		refreshLastRules()
-	).always(function(a1, a2, a3, a4) {
+		refreshLastRules(),
+		refreshLastComments()
+	).always(function(a1, a2, a3, a4, a5, a6) {
 		Pace.stop();
+	});
+}
+
+function refreshLastComments()
+{
+	return get_last_comments(function(data) {	
+		$.each(data, function(index, value){
+			var template = ""
+			    + "<div class='box-footer box-comments'>"
+			    + " <div class='box-comment'>";
+
+			if (value.profile_picture_url.length == 0) {
+				template += "   <img class='img-circle img-sm' src='<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ."dist/img/noavatar.jpg"?>' alt='Icon'>";	
+			} else {
+				template += "   <img class='img-circle img-sm' src='" + value.profile_picture_url + "' alt='Icon'>";	
+			}		    
+			    
+			template = template 
+				+ "   <div class='comment-text'>"
+			    + "     <span class='username'>"
+			    + value.fullname + " on Rule : " + "<a href='" + "<?php echo $GLOBALS["config"]["urls"]["baseUrl"] ?>view.php?id=" + value.rule_id + "'>" + value.rule_name + " (#" + value.rule_id + ")" + "</a>"
+			    + "        <span class='text-muted pull-right'>" + value.created + "</span>"
+			    + "      </span>"
+			    + value.content
+			    + "   </div>"
+			    + "  </div>"
+			    + " </div>";
+			$("#last-comments").append(template);
+	    });		
 	});
 }
 
@@ -411,7 +449,7 @@ function refreshLastRules()
       searching: true,
       ordering: true,
       info: true,
-      autoWidth: true,
+      autoWidth: false,
       processing: false,
       serverSide: false,
       responsive: true,

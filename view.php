@@ -329,7 +329,7 @@ desired effect
 				</section>			
 			</div>
 
-			<!-- Preview -->
+			<!-- Preview -->			
 			<div class="row" style="padding-top: 10px;">
 				<section class="col-lg-12">			
 					<div id="div-preview" class="panel-group">
@@ -539,7 +539,6 @@ function refresh_comments(success, error2)
 function refresh_tests() 
 {
   $('#tests').DataTable().ajax.reload();
-  $("#tests-badge").html($('#tests').DataTable().row().count());
 }
 
 function testset_open(id)
@@ -691,11 +690,12 @@ $(function () {
       searching: true,
       ordering: true,
       info: true,
-      autoWidth: true,
+      autoWidth: false,
       processing: false,
       serverSide: false,
       responsive: true,
       fnInitComplete: function (oSettings, json) {
+    	  $("#tests-badge").html($('#tests').DataTable().row().count());
 		  Pace.stop();
       },
       ajax: {

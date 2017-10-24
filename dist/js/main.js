@@ -33,6 +33,22 @@ function get_uploadersdata(onSuccess, onFailure)
 	});
 }
 
+function get_last_comments(onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=getlastcomments',
+		dataType: 'json',
+		data: {},	
+		type: 'get',				
+		success: function(data) { 
+			if (onSuccess) onSuccess(data); 				
+		},
+		error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure();             
+        }
+	});
+}
+
 function get_tagsdata(onSuccess, onFailure)
 {
 	return $.ajax({
@@ -69,6 +85,22 @@ function import_rules(file_id, content, onSuccess, onFailure)
 		url: 'api.php?action=importrules',
 		dataType: 'json',	
 		data: {id: file_id, content: content},	
+		type: 'post',
+		success: function(data, textStatus, xhr) { 
+			if (onSuccess) onSuccess(data, xhr.status); 		
+		},
+        error: function(xhr, textStatus, errorThrown){
+        	if (onFailure) onFailure(xhr.responseText, errorThrown);            
+        }
+	});
+}
+
+function import_rule(rule_id, content, onSuccess, onFailure)
+{
+	return $.ajax({
+		url: 'api.php?action=importrule',
+		dataType: 'json',	
+		data: {id: rule_id, content: content},	
 		type: 'post',
 		success: function(data, textStatus, xhr) { 
 			if (onSuccess) onSuccess(data, xhr.status); 		
@@ -655,14 +687,23 @@ function delete_comment(comment, onSuccess, onFailure)
 //================================================
 // UI functions
 
+var rule_imports = [];
 function loadRule(rule_id, file_id) {
+	
+	// Globals
+	rule_imports =[];
+	
+	// Clear
+	var options = $("select#rule-file");
+	options.find('option').remove();	
+	$('#metas').DataTable().rows().clear();
+	$('#strings').DataTable().rows().clear();
 	
 	// Preload files list
 	get_files(
 		function(data_files, code) {
 			
 			// Fill entries
-			var options = $("select#rule-file");
 			$.each(data_files, function(index, item) {
 				options.append($("<option/>").val(item.id).text(item.name));				
 			});
@@ -683,7 +724,7 @@ function loadRule(rule_id, file_id) {
 						$('input#ispublic').prop('checked', data.is_public);
 					
 						// File
-						$("select#rule-file").val( data.file_id );	
+						options.val( data.file_id );	
 						$.each(data_files, function(index, item) {
 							if (data.file_id == item.id) {
 								var url = $('li#bc-file-name').data('file-url-base') + "?id=" + data.file_id;
@@ -728,8 +769,20 @@ function loadRule(rule_id, file_id) {
 						// Condition
 						$("input#condition").val( data.cond );
 						
-						// Refresh
-						refreshRulePreview();
+						// Imports
+						get_file(data.file_id, 
+							function(data, code) {	
+							
+								// Imports	
+								for (var j=0, imp; imp=data.imports[j]; j++)		
+									rule_imports.push(imp);								
+							
+								refreshRulePreview();
+							},
+							function(message, error) {	
+								$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to get rule: ' + message + ' (' + error + ')</div>');
+							}
+						);					
 					},
 					function(message, error) {
 						$("#alert").html('<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><span class="glyphicon glyphicon-exclamation-sign"></span> Unable to get rule: ' + message + ' (' + error + ')</div>');
@@ -850,6 +903,13 @@ function refreshRulePreview() {
 			+ "*/\n";
 	}
 	
+	// Imports
+	for (var j=0, imp; imp=rule_imports[j]; j++) {
+		default_content = default_content
+			+ "import \"" + imp + "\"\n";
+	}
+	if (rule_imports.length > 0) default_content = default_content + "\n";
+	
 	// Header
 	default_content = default_content 
 		+ (input.is_private ? "private " : "")
@@ -870,8 +930,8 @@ function refreshRulePreview() {
 	// Metas
 		+ "  meta:\n"
 	// Special metas
-		+ (input.author.length > 0 ? ("    author = \"" + input.author + "\"\n") : "")
-		+ (input.threat.length > 0 ? ("    threat = \"" + input.threat + "\"\n") : "")
+		+ "    author = \"" + input.author + "\"\n"
+		+ "    threat = \"" + input.threat + "\"\n"
 		+ "";
 		
 	// Regular metas

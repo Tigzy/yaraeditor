@@ -177,6 +177,22 @@ def TestFile(path, testitem):
         
     return 0
 
+def FormatCondition(condition):
+    nosep_before    = ['(', 'KB', 'MB']
+    nosep_after     = []
+    sep             = ' '
+    
+    joined_condition    = ''
+    noseparator         = True # No separator on first item
+    for term in condition: 
+        if not term in nosep_before and not noseparator:
+            joined_condition += sep # Add separator
+        
+        joined_condition += term    # Add term        
+        noseparator      = True if term in nosep_after else False
+    
+    return joined_condition
+
 def FormatParsing(results):
     data = []
     for rule in results:
@@ -209,6 +225,8 @@ def FormatParsing(results):
         f_rule["threat"] = ""
         if "metadata" in rule:
             for key, value in rule["metadata"].iteritems():
+                if value == "\"\"":
+                    value = ""
                 if key == "threat":
                     f_rule["threat"] = value
                 else:
@@ -235,7 +253,7 @@ def FormatParsing(results):
                     f_rule["strings"].append(new_string)
         
         # condition
-        f_rule["condition"] = " ".join([str(x) for x in rule['condition_terms']])
+        f_rule["condition"] = FormatCondition(rule['condition_terms'])
         
         data.append(f_rule)
         
